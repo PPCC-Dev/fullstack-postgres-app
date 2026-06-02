@@ -1323,13 +1323,7 @@ export default function AgentDashboard({ onViewTicket, initialTab = 'queue' }) {
                     >
                       🧩 ระบบงาน (Modules)
                     </button>
-                    <button
-                      onClick={() => setConfigSubTab('module-programs')}
-                      className={`btn ${configSubTab === 'module-programs' ? 'btn-primary' : 'btn-secondary'}`}
-                      style={{ padding: '0.5rem 1rem', borderRadius: '10px', fontSize: '0.9rem', justifyContent: 'flex-start' }}
-                    >
-                      ⚙️ โปรแกรมย่อย
-                    </button>
+
                     <button
                       onClick={() => setConfigSubTab('programtypes')}
                       className={`btn ${configSubTab === 'programtypes' ? 'btn-primary' : 'btn-secondary'}`}
