@@ -155,7 +155,14 @@ const ModuleProgramManagement = ({ initialModuleFilter = '' }) => {
               setModuleFilter(e.target.value);
               setPage(1);
             }}
-            style={{ margin: 0, padding: '0.3rem 0.6rem', width: '150px' }}
+            readOnly={!!initialModuleFilter}
+            style={{ 
+              margin: 0, 
+              padding: '0.3rem 0.6rem', 
+              width: '150px',
+              backgroundColor: initialModuleFilter ? 'rgba(0, 0, 0, 0.05)' : 'transparent',
+              cursor: initialModuleFilter ? 'not-allowed' : 'text'
+            }}
           />
         </div>
       </div>
@@ -170,7 +177,14 @@ const ModuleProgramManagement = ({ initialModuleFilter = '' }) => {
           value={newModule}
           onChange={(e) => setNewModule(e.target.value)}
           required
-          style={{ margin: 0, flex: 1, minWidth: '120px' }}
+          readOnly={!!initialModuleFilter}
+          style={{ 
+            margin: 0, 
+            flex: 1, 
+            minWidth: '120px',
+            backgroundColor: initialModuleFilter ? 'rgba(0, 0, 0, 0.05)' : 'transparent',
+            cursor: initialModuleFilter ? 'not-allowed' : 'text'
+          }}
         />
         <input
           type="text"
@@ -248,7 +262,15 @@ const ModuleProgramManagement = ({ initialModuleFilter = '' }) => {
                         className="glass-input"
                         value={editingModule}
                         onChange={(e) => setEditingModule(e.target.value)}
-                        style={{ margin: 0, padding: '0.25rem 0.5rem', fontSize: '0.95rem', width: '100%' }}
+                        readOnly={!!initialModuleFilter}
+                        style={{ 
+                          margin: 0, 
+                          padding: '0.25rem 0.5rem', 
+                          fontSize: '0.95rem', 
+                          width: '100%',
+                          backgroundColor: initialModuleFilter ? 'rgba(0, 0, 0, 0.05)' : 'transparent',
+                          cursor: initialModuleFilter ? 'not-allowed' : 'text'
+                        }}
                       />
                     ) : (
                       p.module
