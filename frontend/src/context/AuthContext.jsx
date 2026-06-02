@@ -117,6 +117,40 @@ export const AuthProvider = ({ children }) => {
     setUser(null);
   };
 
+  // Idle Timeout (1 hour)
+  useEffect(() => {
+    if (!token) return;
+
+    let idleTimer;
+    const IDLE_TIMEOUT_MS = 60 * 60 * 1000; // 1 hour
+
+    const handleUserActivity = () => {
+      clearTimeout(idleTimer);
+      idleTimer = setTimeout(() => {
+        console.log('Session expired due to inactivity');
+        logout();
+      }, IDLE_TIMEOUT_MS);
+    };
+
+    // Initialize timer
+    handleUserActivity();
+
+    // Listeners for user activity
+    window.addEventListener('mousemove', handleUserActivity);
+    window.addEventListener('keydown', handleUserActivity);
+    window.addEventListener('click', handleUserActivity);
+    window.addEventListener('scroll', handleUserActivity);
+
+    return () => {
+      clearTimeout(idleTimer);
+      window.removeEventListener('mousemove', handleUserActivity);
+      window.removeEventListener('keydown', handleUserActivity);
+      window.removeEventListener('click', handleUserActivity);
+      window.removeEventListener('scroll', handleUserActivity);
+    };
+  }, [token]);
+
+
   // Update Profile handler
   const updateProfile = async (name, custNum) => {
     try {
