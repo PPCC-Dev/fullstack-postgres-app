@@ -8,7 +8,7 @@ import customerRoutes from './routes/customerRoutes.js';
 import notificationRoutes from './routes/notificationRoutes.js';
 import pool from './config/db.js';
 
-dotenv.config();
+dotenv.config(); // Reload env changes
 
 const app = express();
 const PORT = process.env.PORT || 5001;
