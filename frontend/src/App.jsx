@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import Login from './pages/Login';
 import Register from './pages/Register';
@@ -292,7 +292,7 @@ function ProfileModal({ isOpen, onClose }) {
 }
 
 function MainAppContent() {
-  const { user, loading, logout } = useAuth();
+  const { user, loading, logout, token, API_URL } = useAuth();
   const [authView, setAuthView] = useState('login'); // 'login' or 'register'
   const [selectedTicketId, setSelectedTicketId] = useState(() => {
     const params = new URLSearchParams(window.location.search);
@@ -311,6 +311,84 @@ function MainAppContent() {
 
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [adminView, setAdminView] = useState('dashboard'); // 'dashboard' or 'tickets'
+
+  // Notification Bell state
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [isNotificationOpen, setIsNotificationOpen] = useState(false);
+  const bellRef = useRef(null);
+
+  const fetchNotifications = async () => {
+    if (!token) return;
+    try {
+      const res = await fetch(`${API_URL}/notifications`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setNotifications(data);
+        setUnreadCount(data.filter(n => !n.is_read).length);
+      }
+    } catch (err) {
+      console.error('Error fetching notifications:', err);
+    }
+  };
+
+  useEffect(() => {
+    if (user && token) {
+      fetchNotifications();
+      const interval = setInterval(fetchNotifications, 15000); // Poll every 15 seconds
+      return () => clearInterval(interval);
+    }
+  }, [user, token]);
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (bellRef.current && !bellRef.current.contains(event.target)) {
+        setIsNotificationOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const handleNotificationClick = async (notif) => {
+    setIsNotificationOpen(false);
+    if (!notif.is_read) {
+      try {
+        await fetch(`${API_URL}/notifications/${notif.id}/read`, {
+          method: 'PUT',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        fetchNotifications();
+      } catch (err) {
+        console.error('Failed to mark notification read:', err);
+      }
+    }
+    if (notif.ticket_id) {
+      handleSetTicketId(notif.ticket_id);
+    }
+  };
+
+  const handleMarkAllRead = async () => {
+    try {
+      const res = await fetch(`${API_URL}/notifications/read-all`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      if (res.ok) {
+        fetchNotifications();
+      }
+    } catch (err) {
+      console.error('Failed to mark all notifications read:', err);
+    }
+  };
 
   // 1. Loading State
   if (loading) {
@@ -372,6 +450,58 @@ function MainAppContent() {
                  </button>
                </>
             )}
+
+             {/* Notification Bell Center */}
+             <div className="notification-bell-container" ref={bellRef} style={{ marginRight: '0.5rem' }}>
+               <button 
+                 className="bell-icon-btn" 
+                 onClick={() => setIsNotificationOpen(!isNotificationOpen)}
+                 title="การแจ้งเตือน"
+               >
+                 🔔
+                 {unreadCount > 0 && (
+                   <span className="bell-pulse-badge">
+                     {unreadCount}
+                   </span>
+                 )}
+               </button>
+
+               {isNotificationOpen && (
+                 <div className="notification-dropdown">
+                   <div className="notification-header">
+                     <span className="notification-title">🔔 การแจ้งเตือน ({unreadCount})</span>
+                     {unreadCount > 0 && (
+                       <button className="notification-clear-all" onClick={handleMarkAllRead}>
+                         อ่านทั้งหมด
+                       </button>
+                     )}
+                   </div>
+                   <div className="notification-list">
+                     {notifications.length === 0 ? (
+                       <div className="notification-empty">
+                         <div style={{ fontSize: '1.5rem', marginBottom: '0.25rem' }}>📭</div>
+                         ไม่มีการแจ้งเตือนในขณะนี้
+                       </div>
+                     ) : (
+                       notifications.map(notif => (
+                         <div 
+                           key={notif.id} 
+                           className={`notification-item ${!notif.is_read ? 'unread' : ''}`}
+                           onClick={() => handleNotificationClick(notif)}
+                         >
+                           <div className="noti-item-title">{notif.title}</div>
+                           <div className="noti-item-msg">{notif.message}</div>
+                           <div className="noti-item-time">
+                             {new Date(notif.created_at).toLocaleString('th-TH', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' })}
+                           </div>
+                         </div>
+                       ))
+                     )}
+                   </div>
+                 </div>
+               )}
+             </div>
+
             <div 
               className="user-badge"
               onClick={() => setIsProfileOpen(true)}

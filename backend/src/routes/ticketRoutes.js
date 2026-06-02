@@ -38,7 +38,11 @@ import {
   getIssueTypes,
   createIssueType,
   updateIssueType,
-  deleteIssueType
+  deleteIssueType,
+  getSupportStats,
+  createSupportStat,
+  updateSupportStat,
+  deleteSupportStat
 } from '../controllers/ticketController.js';
 import { authenticateToken, requireAgent } from '../middleware/authMiddleware.js';
 import { upload } from '../middleware/uploadMiddleware.js';
@@ -58,6 +62,11 @@ router.get('/config/error-types', getErrorTypes);
 router.post('/config/error-types', requireAgent, createErrorType);
 router.put('/config/error-types/:id', requireAgent, updateErrorType);
 router.delete('/config/error-types/:id', requireAgent, deleteErrorType);
+
+router.get('/config/support-stats', getSupportStats);
+router.post('/config/support-stats', requireAgent, createSupportStat);
+router.put('/config/support-stats/:stat', requireAgent, updateSupportStat);
+router.delete('/config/support-stats/:stat', requireAgent, deleteSupportStat);
 
 router.get('/config/program-types', getProgramTypes);
 router.post('/config/program-types', requireAgent, createProgramType);

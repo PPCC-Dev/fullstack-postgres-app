@@ -36,7 +36,7 @@ async function initTransporter() {
   return transporter;
 }
 
-const ENABLE_EMAILS = false; // Flag to quickly enable/disable email sending
+const ENABLE_EMAILS = true; // Flag to quickly enable/disable email sending
 
 const sendMail = async (options) => {
   if (!ENABLE_EMAILS) {

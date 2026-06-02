@@ -18,10 +18,12 @@ export default function AdminDashboard({ onNavigateToTickets, onViewTicket }) {
   const [selectedBlock, setSelectedBlock] = useState(null); // 'total', 'active', 'closed'
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(20);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [priorityFilter, setPriorityFilter] = useState('all');
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [selectedBlock, filter, custNumFilter]);
+  }, [selectedBlock, filter, custNumFilter, searchQuery, priorityFilter]);
 
   useEffect(() => {
     fetchCustomers();
@@ -87,6 +89,65 @@ export default function AdminDashboard({ onNavigateToTickets, onViewTicket }) {
       );
     }
     return <div>{m} นาที</div>;
+  };
+
+  const getFilteredTickets = (rawTickets) => {
+    if (!rawTickets) return [];
+    return rawTickets.filter(t => {
+      const matchSearch = searchQuery.trim() === '' || 
+        (t.title && t.title.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        (t.ticket_number && t.ticket_number.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        (t.description && t.description.toLowerCase().includes(searchQuery.toLowerCase()));
+      
+      const matchPriority = priorityFilter === 'all' || t.priority === priorityFilter;
+      
+      return matchSearch && matchPriority;
+    });
+  };
+
+  const handleExportCSV = (ticketsToExport) => {
+    if (!ticketsToExport || ticketsToExport.length === 0) return;
+    
+    // Header columns
+    const headers = [
+      'Ticket Number',
+      'Title',
+      'Customer',
+      'Priority',
+      'Category',
+      'Module',
+      'Status',
+      'Created At',
+      'Resolved At',
+      'Agent'
+    ];
+    
+    const rows = ticketsToExport.map(t => [
+      t.ticket_number || ('#' + t.id),
+      t.title.replace(/"/g, '""'),
+      (t.user_name || t.customer_name) + ' (' + (t.actual_customer_name || t.customer_cust_num || '-') + ')',
+      t.priority,
+      t.category,
+      t.module,
+      t.status === 'open' ? 'รอดำเนินการ' : t.status === 'assigned' ? 'กำลังแก้ไข' : 'ปิดเคสแล้ว',
+      new Date(t.created_at).toLocaleString('th-TH'),
+      t.resolved_at ? new Date(t.resolved_at).toLocaleString('th-TH') : '-',
+      t.agent_name || '-'
+    ]);
+    
+    const csvContent = "\uFEFF" + [
+      headers.join(','),
+      ...rows.map(e => e.map(val => `"${val}"`).join(","))
+    ].join("\n");
+    
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `ppcc_care_report_${filter}_${new Date().toISOString().slice(0,10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   const renderTicketTable = (title, tickets, emptyMessage, colorClass, colorHex) => {
@@ -307,98 +368,192 @@ export default function AdminDashboard({ onNavigateToTickets, onViewTicket }) {
         </div>
       )}
 
+      {/* 🔍 Advanced Search, Filters Panel & Export CSV */}
+      {!loading && !error && report && (
+        <div className="search-filter-panel">
+          <div className="filter-row">
+            <div className="filter-item">
+              <input
+                type="text"
+                className="glass-input"
+                placeholder="🔍 ค้นหาด้วยคำสำคัญ (หัวข้อ, รายละเอียด, รหัสตั๋ว)..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                style={{ margin: 0 }}
+              />
+            </div>
+            <div className="filter-item-small">
+              <select
+                className="glass-input"
+                value={priorityFilter}
+                onChange={(e) => setPriorityFilter(e.target.value)}
+                style={{ margin: 0 }}
+              >
+                <option value="all">ความเร่งด่วน (ทั้งหมด)</option>
+                <option value="high">สูง (High)</option>
+                <option value="medium">ปานกลาง (Medium)</option>
+                <option value="low">ต่ำ (Low)</option>
+              </select>
+            </div>
+            <button
+              className="btn btn-export-csv"
+              onClick={() => handleExportCSV(getFilteredTickets(selectedBlock === 'active' ? report.activeTickets : selectedBlock === 'closed' ? report.closedTickets : report.tickets))}
+              disabled={getFilteredTickets(selectedBlock === 'active' ? report.activeTickets : selectedBlock === 'closed' ? report.closedTickets : report.tickets).length === 0}
+              style={{ margin: 0, display: 'inline-flex', alignItems: 'center', gap: '0.4rem', fontWeight: 600 }}
+            >
+              📥 ส่งออกข้อมูล ({getFilteredTickets(selectedBlock === 'active' ? report.activeTickets : selectedBlock === 'closed' ? report.closedTickets : report.tickets).length}) CSV
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Tables for tickets */}
       {!loading && !error && report && selectedBlock && (
         <div style={{ display: 'grid', gap: '2rem', marginBottom: '2rem' }}>
-          {selectedBlock === 'total' && renderTicketTable('📁 จำนวนเคสทั้งหมด', report.tickets, 'ไม่มีเคสในระบบ', 'glow-cyan', '#0ea5e9')}
-          {selectedBlock === 'active' && renderTicketTable('⏳ เคสที่กำลังดำเนินการ', report.activeTickets, 'ไม่มีเคสที่กำลังดำเนินการ', 'glow-purple', '#8b5cf6')}
-          {selectedBlock === 'closed' && renderTicketTable('✅ เคสที่ปิดแล้ว', report.closedTickets, 'ไม่มีเคสที่ถูกปิดในช่วงเวลานี้', 'glow-green', '#10b981')}
+          {selectedBlock === 'total' && renderTicketTable('📁 จำนวนเคสทั้งหมด', getFilteredTickets(report.tickets), 'ไม่มีเคสในระบบ', 'glow-cyan', '#0ea5e9')}
+          {selectedBlock === 'active' && renderTicketTable('⏳ เคสที่กำลังดำเนินการ', getFilteredTickets(report.activeTickets), 'ไม่มีเคสที่กำลังดำเนินการ', 'glow-purple', '#8b5cf6')}
+          {selectedBlock === 'closed' && renderTicketTable('✅ เคสที่ปิดแล้ว', getFilteredTickets(report.closedTickets), 'ไม่มีเคสที่ถูกปิดในช่วงเวลานี้', 'glow-green', '#10b981')}
         </div>
       )}
 
       {/* Analytics breakdown panel */}
       {!loading && !error && report && report.tickets && (
-        <div className="glass-card" style={{ padding: '2rem', textAlign: 'left', background: 'rgba(255, 255, 255, 0.8)' }}>
+        <div className="glass-card" style={{ padding: '2rem', textAlign: 'left', background: 'rgba(255, 255, 255, 0.8)', marginBottom: '2rem' }}>
           <div style={{ marginBottom: '1.5rem', borderBottom: '1px solid var(--glass-border)', paddingBottom: '1rem' }}>
             <h3 style={{ fontSize: '1.3rem', marginBottom: '0.25rem', background: 'linear-gradient(135deg, var(--accent-cyan), var(--accent-purple))', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-              📊 บทวิเคราะห์ข้อมูลและสัดส่วน
+              📊 บทวิเคราะห์ข้อมูลและสัดส่วนตั๋วบริการ (Ticket Analytics)
             </h3>
-            <p style={{ fontSize: '0.85rem', color: '#64748b' }}>สรุปสัดส่วนข้อมูลเคสซัพพอร์ตในฐานข้อมูลตามตัวกรองช่วงเวลาปัจจุบัน</p>
+            <p style={{ fontSize: '0.85rem', color: '#64748b' }}>สรุปวิเคราะห์เปรียบเทียบสัดส่วนตั๋วบริการช่วยเหลือในรูปแบบกราฟวิเคราะห์ผล</p>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '2.5rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '2rem' }}>
             {/* Priority Section */}
-            <div className="analytics-chart-bar-container" style={{ margin: 0 }}>
-              <h4 style={{ fontSize: '0.85rem', color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid var(--glass-border)', paddingBottom: '0.5rem', fontWeight: 700, marginBottom: '1rem' }}>
-                🔴 ระดับความเร่งด่วน (Priority)
-              </h4>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            <div className="chart-glass-card" style={{ padding: '1.5rem', alignItems: 'stretch', textAlign: 'left' }}>
+              <span className="chart-title">🔴 ระดับความเร่งด่วน (Priority Ratio)</span>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', flexGrow: 1, justifyContent: 'center' }}>
                 <div className="analytics-bar-item">
-                  <div className="bar-labels">
-                    <span>สูง (High)</span>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem', fontWeight: 700, marginBottom: '0.35rem' }}>
+                    <span style={{ color: '#ef4444' }}>สูง (High)</span>
                     <span>{stats.priority.high} เคส ({getPercent(stats.priority.high)})</span>
                   </div>
-                  <div className="bar-track">
-                    <div className="bar-fill" style={{ width: getPercent(stats.priority.high), backgroundColor: 'var(--priority-high)', '--bar-shadow': 'var(--priority-high)' }}></div>
+                  <div style={{ height: '8px', background: 'rgba(0,0,0,0.05)', borderRadius: '4px', overflow: 'hidden' }}>
+                    <div style={{ width: getPercent(stats.priority.high), height: '100%', backgroundColor: 'var(--priority-high)', borderRadius: '4px', transition: 'width 0.6s ease' }}></div>
                   </div>
                 </div>
+                
                 <div className="analytics-bar-item">
-                  <div className="bar-labels">
-                    <span>ปานกลาง (Medium)</span>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem', fontWeight: 700, marginBottom: '0.35rem' }}>
+                    <span style={{ color: '#d97706' }}>ปานกลาง (Medium)</span>
                     <span>{stats.priority.medium} เคส ({getPercent(stats.priority.medium)})</span>
                   </div>
-                  <div className="bar-track">
-                    <div className="bar-fill" style={{ width: getPercent(stats.priority.medium), backgroundColor: 'var(--priority-medium)', '--bar-shadow': 'var(--priority-medium)' }}></div>
+                  <div style={{ height: '8px', background: 'rgba(0,0,0,0.05)', borderRadius: '4px', overflow: 'hidden' }}>
+                    <div style={{ width: getPercent(stats.priority.medium), height: '100%', backgroundColor: 'var(--priority-medium)', borderRadius: '4px', transition: 'width 0.6s ease' }}></div>
                   </div>
                 </div>
+
                 <div className="analytics-bar-item">
-                  <div className="bar-labels">
-                    <span>ต่ำ (Low)</span>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem', fontWeight: 700, marginBottom: '0.35rem' }}>
+                    <span style={{ color: '#475569' }}>ต่ำ (Low)</span>
                     <span>{stats.priority.low} เคส ({getPercent(stats.priority.low)})</span>
                   </div>
-                  <div className="bar-track">
-                    <div className="bar-fill" style={{ width: getPercent(stats.priority.low), backgroundColor: 'var(--priority-low)', '--bar-shadow': 'var(--priority-low)' }}></div>
+                  <div style={{ height: '8px', background: 'rgba(0,0,0,0.05)', borderRadius: '4px', overflow: 'hidden' }}>
+                    <div style={{ width: getPercent(stats.priority.low), height: '100%', backgroundColor: 'var(--priority-low)', borderRadius: '4px', transition: 'width 0.6s ease' }}></div>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Category Section */}
-            <div className="sidebar-section">
-              <h4 style={{ fontSize: '0.85rem', color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid var(--glass-border)', paddingBottom: '0.5rem', fontWeight: 700, marginBottom: '1rem' }}>
-                🏷️ หมวดหมู่ยอดนิยม (Categories)
-              </h4>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
-                {Object.keys(stats.category).length === 0 ? (
-                  <p style={{ fontSize: '0.85rem', color: '#64748b', textAlign: 'center', padding: '1rem 0' }}>ยังไม่มีข้อมูลตั๋วในหมวดหมู่ต่างๆ</p>
-                ) : (
-                  Object.keys(stats.category).map(cat => (
-                    <div key={cat} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem', alignItems: 'center' }}>
-                      <span style={{ textTransform: 'capitalize', color: '#334155', fontWeight: 500 }}>🏷️ {cat}</span>
-                      <span style={{ fontWeight: 600, color: 'var(--accent-cyan)', background: 'rgba(6, 182, 212, 0.08)', padding: '0.15rem 0.6rem', borderRadius: '12px', fontSize: '0.8rem' }}>{stats.category[cat]} เคส</span>
+            {/* Category Donut Chart Section */}
+            <div className="chart-glass-card">
+              <span className="chart-title">🏷️ สัดส่วนหมวดหมู่ยอดนิยม (Categories)</span>
+              
+              <div className="svg-donut-wrapper">
+                <svg width="100%" height="100%" viewBox="0 0 100 100">
+                  <circle cx="50" cy="50" r="40" fill="transparent" stroke="rgba(0,0,0,0.03)" strokeWidth="10" />
+                  {(() => {
+                    const colors = ['#8b5cf6', '#0ea5e9', '#10b981', '#f59e0b'];
+                    const donutData = Object.keys(stats.category).map((cat, index) => {
+                      const count = stats.category[cat];
+                      const pct = stats.total === 0 ? 0 : (count / stats.total) * 100;
+                      return { label: cat, count, pct, color: colors[index % colors.length] };
+                    });
+                    
+                    let cumulativePercent = 0;
+                    return donutData.map((d) => {
+                      const strokeDasharray = 251.2;
+                      const strokeDashoffset = strokeDasharray - (strokeDasharray * d.pct) / 100;
+                      const rotationAngle = -90 + (cumulativePercent * 3.6);
+                      cumulativePercent += d.pct;
+                      return (
+                        <circle
+                          key={d.label}
+                          cx="50"
+                          cy="50"
+                          r="40"
+                          fill="transparent"
+                          stroke={d.color}
+                          strokeWidth="10"
+                          strokeDasharray={strokeDasharray}
+                          strokeDashoffset={strokeDashoffset}
+                          className="svg-donut-circle"
+                          style={{
+                            transform: `rotate(${rotationAngle}deg)`,
+                            transformOrigin: '50px 50px'
+                          }}
+                        />
+                      );
+                    });
+                  })()}
+                </svg>
+                <div className="donut-center-info">
+                  <span className="donut-center-number">{stats.total}</span>
+                  <span className="donut-center-label">เคสรวม</span>
+                </div>
+              </div>
+
+              <div className="chart-legend">
+                {Object.keys(stats.category).map((cat, index) => {
+                  const colors = ['#8b5cf6', '#0ea5e9', '#10b981', '#f59e0b'];
+                  const color = colors[index % colors.length];
+                  return (
+                    <div key={cat} className="legend-item">
+                      <span className="legend-color-dot" style={{ backgroundColor: color }}></span>
+                      <span>{cat} ({stats.category[cat]})</span>
                     </div>
-                  ))
-                )}
+                  );
+                })}
               </div>
             </div>
 
-            {/* Module Section */}
-            <div className="sidebar-section">
-              <h4 style={{ fontSize: '0.85rem', color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid var(--glass-border)', paddingBottom: '0.5rem', fontWeight: 700, marginBottom: '1rem' }}>
-                🧩 ระบบงานยอดนิยม (Modules)
-              </h4>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
-                {!stats.module || Object.keys(stats.module).length === 0 ? (
-                  <p style={{ fontSize: '0.85rem', color: '#64748b', textAlign: 'center', padding: '1rem 0' }}>ยังไม่มีข้อมูลตั๋วในระบบงานต่างๆ</p>
-                ) : (
-                  Object.keys(stats.module).map(mod => (
-                    <div key={mod} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem', alignItems: 'center' }}>
-                      <span style={{ color: '#334155', fontWeight: 500 }}>🧩 {mod}</span>
-                      <span style={{ fontWeight: 600, color: 'var(--accent-purple)', background: 'rgba(139, 92, 246, 0.08)', padding: '0.15rem 0.6rem', borderRadius: '12px', fontSize: '0.8rem' }}>{stats.module[mod]} เคส</span>
-                    </div>
-                  ))
-                )}
-              </div>
+            {/* Modules Bar Chart Section */}
+            <div className="chart-glass-card">
+              <span className="chart-title">🧩 โมดูลระบบงานยอดนิยม (Modules Frequency)</span>
+              
+              {Object.keys(stats.module).length === 0 ? (
+                <div style={{ flexGrow: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b', fontSize: '0.85rem' }}>
+                  ยังไม่มีข้อมูลโมดูลตั๋วในระบบ
+                </div>
+              ) : (
+                <div style={{ width: '100%', flexGrow: 1, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
+                  <div className="bar-chart-container">
+                    {Object.keys(stats.module).slice(0, 6).map((mod, index) => {
+                      const count = stats.module[mod];
+                      const maxCount = Math.max(...Object.values(stats.module), 1);
+                      const heightPercent = `${Math.round((count / maxCount) * 100)}%`;
+                      const colors = ['#004bb5', '#8b5cf6', '#06b6d4', '#f59e0b', '#ec4899', '#10b981'];
+                      const color = colors[index % colors.length];
+                      return (
+                        <div key={mod} className="bar-column">
+                          <div className="bar-rect" style={{ height: heightPercent, backgroundColor: color }}>
+                            <span className="bar-tooltip">{mod}: {count} เคส ({getPercent(count)})</span>
+                          </div>
+                          <div className="bar-label" title={mod}>{mod}</div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>

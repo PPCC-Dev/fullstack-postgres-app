@@ -5,6 +5,7 @@ import authRoutes from './routes/authRoutes.js';
 import ticketRoutes from './routes/ticketRoutes.js';
 import reportRoutes from './routes/reportRoutes.js';
 import customerRoutes from './routes/customerRoutes.js';
+import notificationRoutes from './routes/notificationRoutes.js';
 import pool from './config/db.js';
 
 dotenv.config();
@@ -37,6 +38,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/tickets', ticketRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/customers', customerRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 // 404 Route handler
 app.use((req, res, next) => {

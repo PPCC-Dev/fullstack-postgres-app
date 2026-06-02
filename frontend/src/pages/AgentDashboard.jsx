@@ -4,6 +4,7 @@ import CustomerManagement from '../components/config/CustomerManagement';
 import ProgramTypeManagement from '../components/config/ProgramTypeManagement';
 import IssueTypeManagement from '../components/config/IssueTypeManagement';
 import ModuleProgramManagement from '../components/config/ModuleProgramManagement';
+import SupportStatManagement from '../components/config/SupportStatManagement';
 
 export default function AgentDashboard({ onViewTicket, initialTab = 'queue' }) {
   const { user, token, API_URL } = useAuth();
@@ -1363,6 +1364,13 @@ export default function AgentDashboard({ onViewTicket, initialTab = 'queue' }) {
                     >
                       🤝 ลูกค้า (Customers)
                     </button>
+                    <button
+                      onClick={() => setConfigSubTab('supportstats')}
+                      className={`btn ${configSubTab === 'supportstats' ? 'btn-primary' : 'btn-secondary'}`}
+                      style={{ padding: '0.5rem 1rem', borderRadius: '10px', fontSize: '0.9rem', justifyContent: 'flex-start' }}
+                    >
+                      📊 สถานะดำเนินงาน (SupportStat)
+                    </button>
                   </div>
 
                   {/* MAIN CONTENT (LEFT SIDE) */}
@@ -1572,6 +1580,7 @@ export default function AgentDashboard({ onViewTicket, initialTab = 'queue' }) {
                   )}
                   
                   {configSubTab === 'customers' && <CustomerManagement />}
+                  {configSubTab === 'supportstats' && <SupportStatManagement />}
                   {configSubTab === 'module-programs' && <ModuleProgramManagement initialModuleFilter={moduleProgramFilter} />}
                   {configSubTab === 'members' && (() => {
                     const totalMembers = members.length;

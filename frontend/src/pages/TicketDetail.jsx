@@ -16,6 +16,9 @@ export default function TicketDetail({ ticketId, onBack }) {
   const [workaround, setWorkaround] = useState('');
   const [savingSolution, setSavingSolution] = useState(false);
   const [uploadingAttachment, setUploadingAttachment] = useState(false);
+  const [isInternal, setIsInternal] = useState(false);
+  const [previewImage, setPreviewImage] = useState(null);
+  const [previewIndex, setPreviewIndex] = useState(-1);
 
   const messagesEndRef = useRef(null);
 
@@ -97,7 +100,10 @@ export default function TicketDetail({ ticketId, onBack }) {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ message_text: newMessageText })
+        body: JSON.stringify({ 
+          message_text: newMessageText,
+          is_internal: isInternal
+        })
       });
 
       if (!response.ok) throw new Error('Failed to send message.');
@@ -105,6 +111,7 @@ export default function TicketDetail({ ticketId, onBack }) {
       const newMsg = await response.json();
       setMessages(prev => [...prev, newMsg]);
       setNewMessageText('');
+      setIsInternal(false); // Reset to public
       
       // Scroll to bottom of chat only when explicitly sending a message
       setTimeout(() => {
@@ -388,46 +395,57 @@ export default function TicketDetail({ ticketId, onBack }) {
               )}
 
               {ticket.attachments && ticket.attachments.length > 0 ? (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '1rem' }}>
+                <div className="attachments-gallery">
                   {ticket.attachments.map((att) => {
                     const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(att.file_url);
+                    const imageAttachments = ticket.attachments.filter(item => /\.(jpg|jpeg|png|gif|webp)$/i.test(item.file_url));
+                    const imgIndex = imageAttachments.findIndex(item => item.id === att.id);
+                    
                     return (
-                    <div key={att.id} style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: '0.25rem', border: '1px solid var(--glass-border)', padding: '0.25rem', borderRadius: '8px', background: 'var(--glass-bg)', overflow: 'hidden' }}>
-                      <a href={`${API_URL.replace('/api', '')}${att.file_url}`} target="_blank" rel="noopener noreferrer" style={{ display: 'block', textDecoration: 'none', color: 'inherit' }}>
+                      <div 
+                        key={att.id} 
+                        className="attachment-file-card"
+                        onClick={(e) => {
+                          if (isImage) {
+                            e.preventDefault();
+                            setPreviewImage(att.file_url);
+                            setPreviewIndex(imgIndex);
+                          } else {
+                            window.open(`${API_URL.replace('/api', '')}${att.file_url}`, '_blank');
+                          }
+                        }}
+                      >
                         {isImage ? (
                           <img 
                             src={`${API_URL.replace('/api', '')}${att.file_url}`} 
                             alt={att.file_name} 
-                            style={{ width: '100%', height: '110px', objectFit: 'cover', borderRadius: '6px', cursor: 'zoom-in' }} 
+                            className="file-preview-thumbnail" 
                           />
                         ) : (
-                          <div style={{ width: '100%', height: '110px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#f8fafc', borderRadius: '6px', color: '#475569' }}>
-                            <span style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>📄</span>
-                            <span style={{ fontSize: '0.75rem', fontWeight: 600, padding: '0 0.5rem', textAlign: 'center', wordBreak: 'break-all' }}>ดาวน์โหลดไฟล์</span>
+                          <div className="file-preview-thumbnail">
+                            📄
                           </div>
                         )}
-                      </a>
-                      <div style={{ fontSize: '0.75rem', color: '#64748b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', padding: '0 0.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span style={{ maxWidth: '75%' }} title={att.file_name}>{att.file_name}</span>
+                        <div className="file-card-info">
+                          <span className="file-card-name" title={att.file_name}>{att.file_name}</span>
+                          <span className="file-card-action-txt">
+                            {isImage ? '👁️ คลิกเพื่อพรีวิว' : '📥 คลิกเพื่อดาวน์โหลด'}
+                          </span>
+                        </div>
                         <button
                           type="button"
-                          onClick={() => handleDeleteAttachment(att.id)}
-                          style={{
-                            border: 'none',
-                            background: 'none',
-                            cursor: 'pointer',
-                            fontSize: '0.8rem',
-                            padding: '2px',
-                            color: 'var(--accent-purple)',
-                            fontWeight: 'bold'
+                          className="attachment-delete-btn"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteAttachment(att.id);
                           }}
                           title="ลบไฟล์นี้"
                         >
-                          ❌
+                          ✕
                         </button>
                       </div>
-                    </div>
-                  )})}
+                    );
+                  })}
                 </div>
               ) : (
                 <div style={{ padding: '1rem', background: 'rgba(0, 0, 0, 0.01)', border: '1px dashed var(--glass-border)', borderRadius: '8px', color: '#94a3b8', fontSize: '0.85rem', textAlign: 'center' }}>
@@ -556,7 +574,7 @@ export default function TicketDetail({ ticketId, onBack }) {
                   }
 
                   return (
-                    <div key={msg.id} className={`message-bubble ${isMyMessage ? 'outgoing' : 'incoming'}`}>
+                    <div key={msg.id} className={`message-bubble ${isMyMessage ? 'outgoing' : 'incoming'} ${msg.is_internal === true || msg.is_internal === 'true' ? 'internal' : ''}`}>
                       <div>{msg.message_text}</div>
                       <div className="message-info" style={{ justifyContent: isMyMessage ? 'flex-end' : 'flex-start' }}>
                         <span className="msg-sender" style={{ color: isAgentOrAdmin ? 'var(--accent-purple)' : 'var(--accent-cyan)' }}>
@@ -576,6 +594,24 @@ export default function TicketDetail({ ticketId, onBack }) {
 
             {/* Input area */}
             <div className="chat-input-area">
+              {(user.role === 'agent' || user.role === 'admin') && (
+                <div className="segment-control">
+                  <button
+                    type="button"
+                    className={`segment-btn public ${!isInternal ? 'active' : ''}`}
+                    onClick={() => setIsInternal(false)}
+                  >
+                    💬 ส่งหาลูกค้า (Public)
+                  </button>
+                  <button
+                    type="button"
+                    className={`segment-btn internal ${isInternal ? 'active' : ''}`}
+                    onClick={() => setIsInternal(true)}
+                  >
+                    🔒 โน้ตภายใน (Internal Note)
+                  </button>
+                </div>
+              )}
               <form onSubmit={handleSendMessage} className="chat-form">
                 <input
                   type="text"
@@ -743,6 +779,64 @@ export default function TicketDetail({ ticketId, onBack }) {
           </div>
         </div>
       </div>
+
+      {/* Blurred image preview modal */}
+      {previewImage && (
+        <div className="modal-preview-overlay" onClick={() => setPreviewImage(null)}>
+          <div className="modal-preview-wrapper" onClick={(e) => e.stopPropagation()}>
+            <img 
+              src={`${API_URL.replace('/api', '')}${previewImage}`} 
+              alt="Preview" 
+              className="modal-preview-img" 
+            />
+            <div className="modal-preview-controls-bar">
+              <button 
+                className="modal-ctrl-btn" 
+                onClick={() => window.open(`${API_URL.replace('/api', '')}${previewImage}`, '_blank')}
+                title="เปิดรูปภาพในแท็บใหม่"
+              >
+                🔗 เปิดรูปขนาดเต็ม
+              </button>
+              <span>|</span>
+              <button className="modal-ctrl-btn" onClick={() => setPreviewImage(null)}>
+                ✕ ปิดพรีวิว
+              </button>
+            </div>
+            
+            {/* Sliding Carousel navigation arrows */}
+            {(() => {
+              const imageAttachments = ticket.attachments ? ticket.attachments.filter(item => /\.(jpg|jpeg|png|gif|webp)$/i.test(item.file_url)) : [];
+              if (imageAttachments.length > 1) {
+                return (
+                  <>
+                    <button 
+                      className="modal-nav-arrow left"
+                      onClick={() => {
+                        const prevIdx = (previewIndex - 1 + imageAttachments.length) % imageAttachments.length;
+                        setPreviewIndex(prevIdx);
+                        setPreviewImage(imageAttachments[prevIdx].file_url);
+                      }}
+                    >
+                      ‹
+                    </button>
+                    <button 
+                      className="modal-nav-arrow right"
+                      onClick={() => {
+                        const nextIdx = (previewIndex + 1) % imageAttachments.length;
+                        setPreviewIndex(nextIdx);
+                        setPreviewImage(imageAttachments[nextIdx].file_url);
+                      }}
+                    >
+                      ›
+                    </button>
+                  </>
+                );
+              }
+              return null;
+            })()}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -5,6 +5,19 @@ import { fileURLToPath } from 'url';
 
 import { sendTicketCreatedEmail, sendTicketUpdatedEmail, sendTicketClosedEmail } from '../services/emailService.js';
 
+// Helper to create in-app notifications
+const createNotification = async (userId, title, message, type, ticketId) => {
+  try {
+    await pool.query(
+      `INSERT INTO notifications (user_id, title, message, type, ticket_id) 
+       VALUES ($1, $2, $3, $4, $5)`,
+      [userId, title, message, type, ticketId]
+    );
+  } catch (err) {
+    console.error('Failed to create in-app notification:', err);
+  }
+};
+
 // 1. Create a Ticket (Customer Only)
 export const createTicket = async (req, res) => {
   const { title, description, category, priority, module, form_name, additional_email, cust_num, program_type, issue_type } = req.body;
@@ -87,17 +100,28 @@ export const createTicket = async (req, res) => {
     );
     newTicket.attachments = attachmentsRes.rows;
 
-    // Send email notification
+    // Send email & in-app notification
     try {
       const customerRes = await pool.query('SELECT email FROM users WHERE id = $1', [customerId]);
-      const adminsRes = await pool.query("SELECT email FROM users WHERE role IN ('admin', 'agent')");
+      const adminsRes = await pool.query("SELECT id, email FROM users WHERE role IN ('admin', 'agent')");
       
       const customerEmail = customerRes.rows[0]?.email;
       const adminEmails = adminsRes.rows.map(r => r.email);
       
       await sendTicketCreatedEmail(newTicket, customerEmail, adminEmails, additional_email);
+
+      // Create in-app notifications
+      for (const admin of adminsRes.rows) {
+        await createNotification(
+          admin.id,
+          '🎫 ตั๋วใหม่ได้รับการแจ้งความช่วยเหลือ',
+          `ลูกค้าได้ส่งตั๋วใหม่ #${newTicket.ticket_number}: "${newTicket.title}"`,
+          'ticket_created',
+          newTicket.id
+        );
+      }
     } catch (emailErr) {
-      console.error('Failed to send creation email:', emailErr);
+      console.error('Failed to send creation email/notification:', emailErr);
     }
 
     return res.status(201).json(newTicket);
@@ -226,6 +250,19 @@ export const claimTicket = async (req, res) => {
       [agentId, ticketId]
     );
 
+    // Fetch claiming agent name
+    const agentRes = await pool.query('SELECT name FROM users WHERE id = $1', [agentId]);
+    const agentName = agentRes.rows[0]?.name || 'เจ้าหน้าที่';
+
+    // Create notification for customer
+    await createNotification(
+      ticket.customer_id,
+      '👨‍💻 เจ้าหน้าที่กำลังรับเรื่องดูแลตั๋วของคุณ',
+      `เจ้าหน้าที่ ${agentName} ได้รับเคลมตั๋ว #${ticket.ticket_number} ของคุณแล้ว`,
+      'ticket_assigned',
+      ticket.id
+    );
+
     return res.status(200).json(updatedResult.rows[0]);
   } catch (error) {
     console.error('Error claiming ticket:', error);
@@ -278,8 +315,17 @@ export const updateTicketStatus = async (req, res) => {
           const customerRes = await pool.query('SELECT email FROM users WHERE id = $1', [ticket.customer_id]);
           const customerEmail = customerRes.rows[0]?.email;
           await sendTicketClosedEmail(updatedTicket, customerEmail, ticket.additional_email);
+
+          // Create notification for customer
+          await createNotification(
+            ticket.customer_id,
+            '✅ ตั๋วของคุณได้รับการแก้ไขเสร็จสิ้นแล้ว',
+            `ตั๋วช่วยเหลือ #${updatedTicket.ticket_number} ได้รับการแก้ไขและปิดงานเรียบร้อยแล้ว: "${updatedTicket.title}"`,
+            'ticket_closed',
+            updatedTicket.id
+          );
         } catch (emailErr) {
-          console.error('Failed to send closing email:', emailErr);
+          console.error('Failed to send closing email/notification:', emailErr);
         }
       }
       return res.status(200).json(updatedTicket);
@@ -298,7 +344,17 @@ export const updateTicketStatus = async (req, res) => {
           `UPDATE tickets SET status = $1, updated_at = CURRENT_TIMESTAMP, resolved_by = NULL WHERE id = $2 RETURNING *`,
           [status, ticketId]
         );
-        return res.status(200).json(updated.rows[0]);
+        const reopenedTicket = updated.rows[0];
+        if (ticket.agent_id) {
+          await createNotification(
+            ticket.agent_id,
+            '⚠️ ลูกค้าได้ทำการเปิดตั๋วช่วยเหลืออีกครั้ง',
+            `ลูกค้าได้ทำการเปิดตั๋วช่วยเหลือ #${reopenedTicket.ticket_number} อีกครั้ง: "${reopenedTicket.title}"`,
+            'ticket_reopened',
+            reopenedTicket.id
+          );
+        }
+        return res.status(200).json(reopenedTicket);
       } else {
         const resolvedClause = status === 'resolved' ? `, resolved_at = CURRENT_TIMESTAMP, resolved_by = $3` : '';
         const params = status === 'resolved' ? [status, ticketId, userId] : [status, ticketId];
@@ -312,8 +368,19 @@ export const updateTicketStatus = async (req, res) => {
             const customerRes = await pool.query('SELECT email FROM users WHERE id = $1', [ticket.customer_id]);
             const customerEmail = customerRes.rows[0]?.email;
             await sendTicketClosedEmail(updatedTicket, customerEmail, ticket.additional_email);
+
+            // Notify assigned agent
+            if (ticket.agent_id) {
+              await createNotification(
+                ticket.agent_id,
+                '✅ ลูกค้าได้ทำการปิดตั๋วช่วยเหลือเรียบร้อยแล้ว',
+                `ลูกค้าได้ทำการยืนยันแก้ไขเสร็จสิ้นและปิดตั๋ว #${updatedTicket.ticket_number}: "${updatedTicket.title}"`,
+                'ticket_closed',
+                updatedTicket.id
+              );
+            }
           } catch (emailErr) {
-            console.error('Failed to send closing email:', emailErr);
+            console.error('Failed to send closing email/notification:', emailErr);
           }
         }
         return res.status(200).json(updatedTicket);
@@ -325,14 +392,19 @@ export const updateTicketStatus = async (req, res) => {
   }
 };
 
-// 6. Add a Chat Message to Ticket
 export const addMessage = async (req, res) => {
   const { id: userId, role } = req.user;
   const ticketId = req.params.id;
   const { message_text } = req.body;
+  let is_internal = req.body.is_internal === true || req.body.is_internal === 'true';
 
   if (!message_text || message_text.trim() === '') {
     return res.status(400).json({ error: 'Message text cannot be empty.' });
+  }
+
+  // Force is_internal = false for customers
+  if (role !== 'agent' && role !== 'admin') {
+    is_internal = false;
   }
 
   try {
@@ -348,12 +420,12 @@ export const addMessage = async (req, res) => {
       return res.status(403).json({ error: 'Access denied. You do not have permission to post in this ticket.' });
     }
 
-    // Insert message
+    // Insert message with is_internal field
     const newMessageResult = await pool.query(
-      `INSERT INTO messages (ticket_id, sender_id, message_text) 
-       VALUES ($1, $2, $3) 
+      `INSERT INTO messages (ticket_id, sender_id, message_text, is_internal) 
+       VALUES ($1, $2, $3, $4) 
        RETURNING *`,
-      [ticketId, userId, message_text]
+      [ticketId, userId, message_text, is_internal]
     );
 
     // Update ticket's updated_at
@@ -370,27 +442,76 @@ export const addMessage = async (req, res) => {
 
     const msgData = msgWithSender.rows[0];
 
+    // Notification Engine & Email Notification
     try {
-      const customerRes = await pool.query('SELECT email FROM users WHERE id = $1', [ticket.customer_id]);
-      const customerEmail = customerRes.rows[0]?.email;
-      
-      let toEmail;
-      
-      if (role === 'agent' || role === 'admin') {
-        toEmail = customerEmail;
+      if (is_internal) {
+        // Skip Email for internal note
+        // Notify assigned agent if somebody else posted it
+        if (ticket.agent_id && userId !== ticket.agent_id) {
+          await createNotification(
+            ticket.agent_id,
+            '🔒 โน้ตภายในใหม่ถูกบันทึก',
+            `${msgData.sender_name} ได้เขียนบันทึกข้อความภายในในตั๋ว #${ticket.ticket_number}`,
+            'ticket_updated',
+            ticket.id
+          );
+        }
       } else {
-        if (ticket.agent_id) {
-          const agentRes = await pool.query('SELECT email FROM users WHERE id = $1', [ticket.agent_id]);
-          toEmail = agentRes.rows[0]?.email;
+        // Public message: Send Email Notification
+        const customerRes = await pool.query('SELECT email FROM users WHERE id = $1', [ticket.customer_id]);
+        const customerEmail = customerRes.rows[0]?.email;
+        
+        let toEmail;
+        if (role === 'agent' || role === 'admin') {
+          toEmail = customerEmail;
         } else {
-          const adminsRes = await pool.query("SELECT email FROM users WHERE role IN ('admin', 'agent')");
-          toEmail = adminsRes.rows.map(r => r.email).join(',');
+          if (ticket.agent_id) {
+            const agentRes = await pool.query('SELECT email FROM users WHERE id = $1', [ticket.agent_id]);
+            toEmail = agentRes.rows[0]?.email;
+          } else {
+            const adminsRes = await pool.query("SELECT email FROM users WHERE role IN ('admin', 'agent')");
+            toEmail = adminsRes.rows.map(r => r.email).join(',');
+          }
+        }
+        
+        await sendTicketUpdatedEmail(ticket, toEmail, ticket.additional_email, message_text, msgData.sender_name);
+
+        // Public message: In-app notifications
+        if (role === 'agent' || role === 'admin') {
+          // Notify customer
+          await createNotification(
+            ticket.customer_id,
+            '💬 ข้อความใหม่จากเจ้าหน้าที่',
+            `เจ้าหน้าที่ ${msgData.sender_name} ได้เพิ่มข้อความในตั๋ว #${ticket.ticket_number}: "${message_text.substring(0, 60)}..."`,
+            'ticket_updated',
+            ticket.id
+          );
+        } else {
+          // Customer sent message: Notify assigned agent, or notify all admins if unclaimed
+          if (ticket.agent_id) {
+            await createNotification(
+              ticket.agent_id,
+              '💬 ข้อความเพิ่มเติมจากลูกค้า',
+              `ลูกค้า ${msgData.sender_name} ได้ส่งข้อความเพิ่มเติมในตั๋ว #${ticket.ticket_number}: "${message_text.substring(0, 60)}..."`,
+              'ticket_updated',
+              ticket.id
+            );
+          } else {
+            const adminsRes = await pool.query("SELECT id FROM users WHERE role IN ('admin', 'agent')");
+            for (const admin of adminsRes.rows) {
+              await createNotification(
+                admin.id,
+                '💬 ข้อความเพิ่มเติมจากลูกค้า',
+                `ลูกค้า ${msgData.sender_name} ได้ส่งข้อความเพิ่มเติมในตั๋ว #${ticket.ticket_number}: "${message_text.substring(0, 60)}..."`,
+                'ticket_updated',
+                ticket.id
+              );
+            }
+          }
         }
       }
-      
-      await sendTicketUpdatedEmail(ticket, toEmail, ticket.additional_email, message_text, msgData.sender_name);
-    } catch (emailErr) {
-      console.error('Failed to send update email:', emailErr);
+    } catch (notificationErr) {
+      console.error('Failed to send message notifications:', notificationErr);
     }
 
     return res.status(201).json(msgData);
@@ -422,9 +543,9 @@ export const getTicketMessages = async (req, res) => {
       `SELECT m.*, u.name as sender_name, u.role as sender_role
        FROM messages m
        JOIN users u ON m.sender_id = u.id
-       WHERE m.ticket_id = $1
+       WHERE m.ticket_id = $1 AND (m.is_internal = FALSE OR $2 IN ('admin', 'agent'))
        ORDER BY m.created_at ASC`,
-      [ticketId]
+      [ticketId, role]
     );
 
     return res.status(200).json(messagesResult.rows);
@@ -1298,5 +1419,83 @@ export const deleteIssueType = async (req, res) => {
   } catch (error) {
     console.error('Error deleting issue type:', error);
     return res.status(500).json({ error: 'Server error deleting issue type' });
+  }
+};
+
+export const getSupportStats = async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM support_stats ORDER BY stat ASC');
+    return res.status(200).json(result.rows);
+  } catch (error) {
+    console.error('Error fetching support stats:', error);
+    return res.status(500).json({ error: 'Server error while fetching support stats.' });
+  }
+};
+
+export const createSupportStat = async (req, res) => {
+  const { stat, description, remark } = req.body;
+  if (!stat || !description) {
+    return res.status(400).json({ error: 'stat and description are required.' });
+  }
+
+  try {
+    const checkExist = await pool.query('SELECT * FROM support_stats WHERE stat = $1', [stat.trim()]);
+    if (checkExist.rows.length > 0) {
+      return res.status(400).json({ error: 'Support Stat ID already exists.' });
+    }
+
+    const result = await pool.query(
+      'INSERT INTO support_stats (stat, description, remark) VALUES ($1, $2, $3) RETURNING *',
+      [stat.trim(), description.trim(), remark ? remark.trim() : '']
+    );
+    return res.status(201).json(result.rows[0]);
+  } catch (error) {
+    console.error('Error creating support stat:', error);
+    return res.status(500).json({ error: 'Server error while creating support stat.' });
+  }
+};
+
+export const updateSupportStat = async (req, res) => {
+  const { stat } = req.params;
+  const { description, remark } = req.body;
+  
+  if (!description) {
+    return res.status(400).json({ error: 'description is required.' });
+  }
+
+  try {
+    const result = await pool.query(
+      'UPDATE support_stats SET description = $1, remark = $2 WHERE stat = $3 RETURNING *',
+      [description.trim(), remark ? remark.trim() : '', stat]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Support stat not found.' });
+    }
+
+    return res.status(200).json(result.rows[0]);
+  } catch (error) {
+    console.error('Error updating support stat:', error);
+    return res.status(500).json({ error: 'Server error while updating support stat.' });
+  }
+};
+
+export const deleteSupportStat = async (req, res) => {
+  const { stat } = req.params;
+  
+  try {
+    const result = await pool.query(
+      'DELETE FROM support_stats WHERE stat = $1 RETURNING *',
+      [stat]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Support stat not found.' });
+    }
+
+    return res.status(200).json({ message: 'Support stat deleted successfully.', deleted: result.rows[0] });
+  } catch (error) {
+    console.error('Error deleting support stat:', error);
+    return res.status(500).json({ error: 'Server error while deleting support stat.' });
   }
 };
