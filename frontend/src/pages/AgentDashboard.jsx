@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import CustomerManagement from '../components/config/CustomerManagement';
 import ProgramTypeManagement from '../components/config/ProgramTypeManagement';
 import IssueTypeManagement from '../components/config/IssueTypeManagement';
+import ModuleProgramManagement from '../components/config/ModuleProgramManagement';
 
 export default function AgentDashboard({ onViewTicket, initialTab = 'queue' }) {
   const { user, token, API_URL } = useAuth();
@@ -17,7 +18,8 @@ export default function AgentDashboard({ onViewTicket, initialTab = 'queue' }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [activeTab, setActiveTab] = useState(initialTab); // 'queue', 'my-tasks', 'all', 'config'
-  const [configSubTab, setConfigSubTab] = useState('members'); // 'members', 'categories', 'modules', 'companies', 'positions', 'roles', 'errortypes'
+  const [configSubTab, setConfigSubTab] = useState('members'); // 'members', 'categories', 'modules', 'companies', 'positions', 'roles', 'errortypes', 'module-programs'
+  const [moduleProgramFilter, setModuleProgramFilter] = useState('');
   const [customerFilter, setCustomerFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all'); // Add status filter for 'all' tab
   const [claimLoadingId, setClaimLoadingId] = useState(null);
@@ -1322,6 +1324,13 @@ export default function AgentDashboard({ onViewTicket, initialTab = 'queue' }) {
                       🧩 ระบบงาน (Modules)
                     </button>
                     <button
+                      onClick={() => setConfigSubTab('module-programs')}
+                      className={`btn ${configSubTab === 'module-programs' ? 'btn-primary' : 'btn-secondary'}`}
+                      style={{ padding: '0.5rem 1rem', borderRadius: '10px', fontSize: '0.9rem', justifyContent: 'flex-start' }}
+                    >
+                      ⚙️ โปรแกรมย่อย
+                    </button>
+                    <button
                       onClick={() => setConfigSubTab('programtypes')}
                       className={`btn ${configSubTab === 'programtypes' ? 'btn-primary' : 'btn-secondary'}`}
                       style={{ padding: '0.5rem 1rem', borderRadius: '10px', fontSize: '0.9rem', justifyContent: 'flex-start' }}
@@ -1501,6 +1510,7 @@ export default function AgentDashboard({ onViewTicket, initialTab = 'queue' }) {
                   )}
                   
                   {configSubTab === 'customers' && <CustomerManagement />}
+                  {configSubTab === 'module-programs' && <ModuleProgramManagement initialModuleFilter={moduleProgramFilter} />}
                   {configSubTab === 'members' && (
                     members.length === 0 ? (
                       <div className="glass-card empty-state">
@@ -1829,6 +1839,17 @@ export default function AgentDashboard({ onViewTicket, initialTab = 'queue' }) {
                                       </div>
                                     ) : (
                                       <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
+                                        <button
+                                          className="btn btn-secondary"
+                                          style={{ padding: '0.35rem 0.75rem', fontSize: '0.8rem', borderRadius: '8px', whiteSpace: 'nowrap' }}
+                                          onClick={() => {
+                                            setModuleProgramFilter(mod.name);
+                                            setConfigSubTab('module-programs');
+                                          }}
+                                          title="จัดการโปรแกรมย่อย"
+                                        >
+                                          ⚙️ จัดการโปรแกรมย่อย
+                                        </button>
                                         <button
                                           className="btn btn-secondary"
                                           style={{ padding: '0.35rem 0.75rem', fontSize: '0.8rem', borderRadius: '8px', whiteSpace: 'nowrap' }}

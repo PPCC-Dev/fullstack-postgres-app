@@ -16,6 +16,10 @@ import {
   createModule,
   updateModule,
   deleteModule,
+  getModuleProgramGroups,
+  createModuleProgramGroup,
+  updateModuleProgramGroup,
+  deleteModuleProgramGroup,
   getRoles,
   createRole,
   updateRole,
@@ -69,6 +73,11 @@ router.get('/config/modules', getModules);
 router.post('/config/modules', requireAgent, createModule);
 router.put('/config/modules/:name', requireAgent, updateModule);
 router.delete('/config/modules/:name', requireAgent, deleteModule);
+
+router.get('/config/module-program-groups', getModuleProgramGroups);
+router.post('/config/module-program-groups', requireAgent, createModuleProgramGroup);
+router.put('/config/module-program-groups/:id', requireAgent, updateModuleProgramGroup);
+router.delete('/config/module-program-groups/:id', requireAgent, deleteModuleProgramGroup);
 
 router.get('/config/roles', getRoles);
 router.post('/config/roles', requireAgent, createRole);

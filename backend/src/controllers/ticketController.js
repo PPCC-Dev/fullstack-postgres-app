@@ -791,6 +791,106 @@ export const updateModule = async (req, res) => {
   }
 };
 
+// --- Module Program Group Controllers ---
+
+export const getModuleProgramGroups = async (req, res) => {
+  try {
+    const { module, limit = 20, page = 1 } = req.query;
+    const offset = (page - 1) * limit;
+
+    let query = 'SELECT * FROM module_program_group';
+    let countQuery = 'SELECT COUNT(*) FROM module_program_group';
+    const params = [];
+    
+    if (module) {
+      query += ' WHERE module = $1';
+      countQuery += ' WHERE module = $1';
+      params.push(module);
+    }
+    
+    query += ` ORDER BY id ASC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
+    
+    const countResult = await pool.query(countQuery, params);
+    const total = parseInt(countResult.rows[0].count, 10);
+    
+    const result = await pool.query(query, [...params, limit, offset]);
+    
+    return res.status(200).json({
+      data: result.rows,
+      total,
+      page: parseInt(page, 10),
+      limit: parseInt(limit, 10),
+      totalPages: Math.ceil(total / limit)
+    });
+  } catch (error) {
+    console.error('Error fetching module program groups:', error);
+    return res.status(500).json({ error: 'Server error while fetching module program groups.' });
+  }
+};
+
+export const createModuleProgramGroup = async (req, res) => {
+  const { module, program_group, note } = req.body;
+  if (!module || !program_group) {
+    return res.status(400).json({ error: 'Module and Program Group are required.' });
+  }
+
+  try {
+    const result = await pool.query(
+      'INSERT INTO module_program_group (module, program_group, note) VALUES ($1, $2, $3) RETURNING *',
+      [module.trim(), program_group.trim(), note ? note.trim() : null]
+    );
+    return res.status(201).json(result.rows[0]);
+  } catch (error) {
+    console.error('Error creating module program group:', error);
+    return res.status(500).json({ error: 'Server error while creating module program group.' });
+  }
+};
+
+export const updateModuleProgramGroup = async (req, res) => {
+  const { id } = req.params;
+  const { module, program_group, note } = req.body;
+
+  if (!module || !program_group) {
+    return res.status(400).json({ error: 'Module and Program Group are required.' });
+  }
+
+  try {
+    const result = await pool.query(
+      'UPDATE module_program_group SET module = $1, program_group = $2, note = $3 WHERE id = $4 RETURNING *',
+      [module.trim(), program_group.trim(), note ? note.trim() : null, id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Program Group not found.' });
+    }
+
+    return res.status(200).json(result.rows[0]);
+  } catch (error) {
+    console.error('Error updating module program group:', error);
+    return res.status(500).json({ error: 'Server error while updating module program group.' });
+  }
+};
+
+export const deleteModuleProgramGroup = async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const result = await pool.query(
+      'DELETE FROM module_program_group WHERE id = $1 RETURNING *',
+      [id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Program Group not found.' });
+    }
+
+    return res.status(200).json({ message: 'Program Group deleted successfully.', deleted: result.rows[0] });
+  } catch (error) {
+    console.error('Error deleting module program group:', error);
+    return res.status(500).json({ error: 'Server error while deleting module program group.' });
+  }
+};
+
 // 13. Dynamic Roles CRUD Controllers
 export const getRoles = async (req, res) => {
   try {
