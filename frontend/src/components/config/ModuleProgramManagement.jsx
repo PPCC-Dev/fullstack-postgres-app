@@ -13,7 +13,7 @@ const ModuleProgramManagement = ({ initialModuleFilter = '' }) => {
   // Pagination & Filter state
   const [moduleFilter, setModuleFilter] = useState(initialModuleFilter);
   const [page, setPage] = useState(1);
-  const [limit, setLimit] = useState(20);
+  const [limit, setLimit] = useState(10);
   const [totalPages, setTotalPages] = useState(1);
 
   // Form state
@@ -204,10 +204,10 @@ const ModuleProgramManagement = ({ initialModuleFilter = '' }) => {
             className="glass-input"
             style={{ margin: 0, padding: '0.2rem 0.5rem', minWidth: '60px' }}
           >
+            <option value={10}>10</option>
             <option value={20}>20</option>
-            <option value={30}>30</option>
             <option value={40}>40</option>
-            <option value={50}>50</option>
+            <option value={80}>80</option>
             <option value={100}>100</option>
           </select>
           <span>รายการ/หน้า</span>
