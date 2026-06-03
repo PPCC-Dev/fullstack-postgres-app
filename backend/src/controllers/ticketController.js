@@ -103,7 +103,12 @@ export const createTicket = async (req, res) => {
     // Send email & in-app notification
     try {
       const customerRes = await pool.query('SELECT email FROM users WHERE id = $1', [customerId]);
-      const adminsRes = await pool.query("SELECT id, email FROM users WHERE role IN ('admin', 'agent')");
+      const adminsRes = await pool.query(`
+        SELECT u.id, u.email 
+        FROM users u
+        LEFT JOIN roles r ON LOWER(u.role) = LOWER(r.name)
+        WHERE LOWER(COALESCE(r.base_role, u.role)) IN ('admin', 'agent')
+      `);
       
       const customerEmail = customerRes.rows[0]?.email;
       const adminEmails = adminsRes.rows.map(r => r.email);
@@ -469,7 +474,12 @@ export const addMessage = async (req, res) => {
             const agentRes = await pool.query('SELECT email FROM users WHERE id = $1', [ticket.agent_id]);
             toEmail = agentRes.rows[0]?.email;
           } else {
-            const adminsRes = await pool.query("SELECT email FROM users WHERE role IN ('admin', 'agent')");
+            const adminsRes = await pool.query(`
+              SELECT u.email 
+              FROM users u
+              LEFT JOIN roles r ON LOWER(u.role) = LOWER(r.name)
+              WHERE LOWER(COALESCE(r.base_role, u.role)) IN ('admin', 'agent')
+            `);
             toEmail = adminsRes.rows.map(r => r.email).join(',');
           }
         }
@@ -497,7 +507,12 @@ export const addMessage = async (req, res) => {
               ticket.id
             );
           } else {
-            const adminsRes = await pool.query("SELECT id FROM users WHERE role IN ('admin', 'agent')");
+            const adminsRes = await pool.query(`
+              SELECT u.id 
+              FROM users u
+              LEFT JOIN roles r ON LOWER(u.role) = LOWER(r.name)
+              WHERE LOWER(COALESCE(r.base_role, u.role)) IN ('admin', 'agent')
+            `);
             for (const admin of adminsRes.rows) {
               await createNotification(
                 admin.id,

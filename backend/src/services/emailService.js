@@ -1,4 +1,5 @@
 import nodemailer from 'nodemailer';
+import pool from '../config/db.js';
 
 let transporter;
 
@@ -44,6 +45,7 @@ const sendMail = async (options) => {
     return null;
   }
   try {
+    console.log(`[SMTP] Attempting to send email to: "${options.to}" | CC: "${options.cc || ''}" | Subject: "${options.subject}"`);
     const tp = await initTransporter();
     const info = await tp.sendMail({
       from: process.env.SMTP_FROM || '"PPCC Support" <support@ppcc.co.th>',
@@ -60,6 +62,35 @@ const sendMail = async (options) => {
     console.error('Error sending email:', error);
   }
 };
+
+// Fetch module description from database
+async function getModuleDescription(moduleName) {
+  if (!moduleName) return '-';
+  try {
+    const res = await pool.query('SELECT description FROM modules WHERE name = $1', [moduleName]);
+    if (res.rows.length > 0 && res.rows[0].description) {
+      return res.rows[0].description;
+    }
+  } catch (error) {
+    console.error('Error fetching module description:', error);
+  }
+  return moduleName;
+}
+
+// Fetch customer contract_email from database
+async function getCustomerContractEmail(custNum) {
+  if (!custNum) return null;
+  try {
+    const res = await pool.query('SELECT contract_email FROM customers WHERE cust_num = $1', [custNum]);
+    if (res.rows.length > 0 && res.rows[0].contract_email) {
+      const email = res.rows[0].contract_email.trim();
+      return email || null;
+    }
+  } catch (error) {
+    console.error('Error fetching customer contract_email:', error);
+  }
+  return null;
+}
 
 const getFormattedTicketEmailHTML = (ticket, type, headline, typeLabel, messageUpdateHtml = '') => {
   const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:5173';
@@ -124,14 +155,14 @@ const getFormattedTicketEmailHTML = (ticket, type, headline, typeLabel, messageU
           
           <!-- Gradient Header (Purple-Cyan Portal Theme) -->
           <tr>
-            <td style="background: linear-gradient(135deg, #7c3aed, #0ea5e9); padding: 35px 30px; text-align: center;">
-              <span style="display: inline-block; background-color: rgba(255,255,255,0.18); color: #ffffff; padding: 5px 14px; border-radius: 20px; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 12px; border: 1px solid rgba(255,255,255,0.25);">
+            <td bgcolor="#7c3aed" style="background-color: #7c3aed; background-image: linear-gradient(135deg, #7c3aed, #0ea5e9); padding: 35px 30px; text-align: center;">
+              <span style="display: inline-block; background-color: #935cef; color: #ffffff; padding: 5px 14px; border-radius: 20px; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 12px; border: 1px solid #a78bfa;">
                 ${typeLabel}
               </span>
               <h1 style="color: #ffffff; margin: 0; font-size: 1.65rem; font-weight: 800; letter-spacing: -0.025em; line-height: 1.2;">
                 PPCC Care Portal
               </h1>
-              <p style="color: rgba(255,255,255,0.85); margin: 6px 0 0 0; font-size: 0.9rem; font-weight: 500;">
+              <p style="color: #e2e8f0; margin: 6px 0 0 0; font-size: 0.9rem; font-weight: 500;">
                 ระบบบริหารจัดการและติดตามตั๋วบริการช่วยเหลือลูกค้า
               </p>
             </td>
@@ -166,12 +197,12 @@ const getFormattedTicketEmailHTML = (ticket, type, headline, typeLabel, messageU
               </h3>
               
               <table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin-bottom: 24px; text-align: left;">
-                <!-- Row 1: Ticket ID & Priority -->
+                <!-- Row 1: Ref Code & Priority -->
                 <tr>
                   <td width="50%" valign="top" style="padding-bottom: 12px; padding-right: 10px;">
-                    <span style="display: block; font-size: 0.75rem; font-weight: 700; color: #64748b; text-transform: uppercase; margin-bottom: 2px;">🎫 รหัสตั๋วช่วยเหลือ (Ticket ID)</span>
+                    <span style="display: block; font-size: 0.75rem; font-weight: 700; color: #64748b; text-transform: uppercase; margin-bottom: 2px;">🔗 รหัสอ้างอิง (Ref. Code)</span>
                     <a href="${ticketLink}" style="font-size: 0.92rem; font-weight: 700; color: #0ea5e9; text-decoration: underline;">
-                      #${ticket.id}
+                      ${ticket.ticket_number || ('#' + ticket.id)}
                     </a>
                   </td>
                   <td width="50%" valign="top" style="padding-bottom: 12px;">
@@ -190,7 +221,7 @@ const getFormattedTicketEmailHTML = (ticket, type, headline, typeLabel, messageU
                   </td>
                   <td width="50%" valign="top" style="padding-bottom: 12px;">
                     <span style="display: block; font-size: 0.75rem; font-weight: 700; color: #64748b; text-transform: uppercase; margin-bottom: 2px;">🧩 ระบบงาน (Module)</span>
-                    <span style="font-size: 0.9rem; font-weight: 600; color: #1e293b;">${ticket.module}</span>
+                    <span style="font-size: 0.9rem; font-weight: 600; color: #1e293b;">${ticket.moduleDescription || ticket.module || '-'}</span>
                   </td>
                 </tr>
 
@@ -206,21 +237,17 @@ const getFormattedTicketEmailHTML = (ticket, type, headline, typeLabel, messageU
                   </td>
                 </tr>
 
-                <!-- Row 4: Form Name & Ref Code -->
+                <!-- Row 4: Form Name -->
                 <tr>
                   <td width="50%" valign="top" style="padding-bottom: 12px; padding-right: 10px;">
                     <span style="display: block; font-size: 0.75rem; font-weight: 700; color: #64748b; text-transform: uppercase; margin-bottom: 2px;">🖥️ หน้าจอทำงาน (Form Name)</span>
                     <span style="font-size: 0.9rem; font-weight: 600; color: #1e293b;">${ticket.form_name || '-'}</span>
                   </td>
                   <td width="50%" valign="top" style="padding-bottom: 12px;">
-                    <span style="display: block; font-size: 0.75rem; font-weight: 700; color: #64748b; text-transform: uppercase; margin-bottom: 2px;">🔗 รหัสอ้างอิง (Ref. Code)</span>
-                    <span style="font-size: 0.9rem; font-weight: 700; color: #0284c7;">${ticket.ticket_number || ('#' + ticket.id)}</span>
+                    &nbsp;
                   </td>
                 </tr>
               </table>
-
-              <!-- Chat Update Details -->
-              ${messageUpdateHtml}
 
               <!-- Description Block -->
               <h3 style="color: #0f172a; font-size: 0.95rem; font-weight: 700; margin: 0 0 10px 0; text-transform: uppercase; letter-spacing: 0.02em;">
@@ -234,6 +261,9 @@ const getFormattedTicketEmailHTML = (ticket, type, headline, typeLabel, messageU
                 </tr>
               </table>
 
+              <!-- Chat Update Details -->
+              ${messageUpdateHtml}
+
               <!-- Resolution & Workaround Blocks -->
               ${resolutionBlock}
               ${workaroundBlock}
@@ -242,7 +272,7 @@ const getFormattedTicketEmailHTML = (ticket, type, headline, typeLabel, messageU
               <table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin-top: 15px; margin-bottom: 20px;">
                 <tr>
                   <td align="center">
-                    <a href="${ticketLink}" style="display: inline-block; background: linear-gradient(135deg, #7c3aed, #0ea5e9); color: #ffffff; text-decoration: none; padding: 14px 30px; border-radius: 12px; font-size: 0.92rem; font-weight: 700; letter-spacing: -0.01em; box-shadow: 0 6px 20px rgba(124, 58, 237, 0.25); text-align: center;">
+                    <a href="${ticketLink}" style="display: inline-block; background-color: #7c3aed; background-image: linear-gradient(135deg, #7c3aed, #0ea5e9); color: #ffffff; text-decoration: none; padding: 14px 30px; border-radius: 12px; font-size: 0.92rem; font-weight: 700; letter-spacing: -0.01em; box-shadow: 0 6px 20px rgba(124, 58, 237, 0.25); text-align: center;">
                       🔍 เปิดดูรายละเอียดตั๋วและตอบกลับบนระบบ (View Ticket Details)
                     </a>
                   </td>
@@ -254,7 +284,7 @@ const getFormattedTicketEmailHTML = (ticket, type, headline, typeLabel, messageU
 
           <!-- Elegant Footer -->
           <tr>
-            <td style="background-color: #f8fafc; border-top: 1px solid #f1f5f9; padding: 25px 30px; text-align: center;">
+            <td bgcolor="#f8fafc" style="background-color: #f8fafc; border-top: 1px solid #f1f5f9; padding: 25px 30px; text-align: center;">
               <p style="margin: 0; font-size: 0.78rem; color: #64748b; line-height: 1.45;">
                 นี่คือจดหมายแจ้งเตือนอัตโนมัติจากระบบงานสนับสนุนลูกค้า PPCC Care Portal<br/>
                 กรุณาหลีกเลี่ยงการตอบกลับอีเมลฉบับนี้โดยตรง
@@ -279,19 +309,22 @@ export const sendTicketCreatedEmail = async (ticket, customerEmail, adminEmails,
   const headline = `🎉 มีการเปิดตั๋วบริการช่วยเหลือรายการใหม่เข้ามาในระบบ`;
   const typeLabel = `ตั๋วช่วยเหลือใหม่ (New Ticket)`;
   
-  const html = getFormattedTicketEmailHTML(ticket, 'created', headline, typeLabel);
+  const moduleDesc = await getModuleDescription(ticket.module);
+  const ticketWithModuleDesc = { ...ticket, moduleDescription: moduleDesc };
+  
+  const html = getFormattedTicketEmailHTML(ticketWithModuleDesc, 'created', headline, typeLabel);
   const toEmails = [customerEmail, ...adminEmails].filter(Boolean).join(',');
-
+ 
   const mailOptions = {
     to: toEmails,
     subject,
     html
   };
-
+ 
   if (ccEmail) {
     mailOptions.cc = ccEmail;
   }
-
+ 
   return sendMail(mailOptions);
 };
 
@@ -313,7 +346,10 @@ export const sendTicketUpdatedEmail = async (ticket, toEmail, ccEmail = null, me
     </table>
   `;
 
-  const html = getFormattedTicketEmailHTML(ticket, 'updated', headline, typeLabel, messageUpdateHtml);
+  const moduleDesc = await getModuleDescription(ticket.module);
+  const ticketWithModuleDesc = { ...ticket, moduleDescription: moduleDesc };
+
+  const html = getFormattedTicketEmailHTML(ticketWithModuleDesc, 'updated', headline, typeLabel, messageUpdateHtml);
 
   const mailOptions = {
     to: toEmail,
@@ -333,7 +369,10 @@ export const sendTicketClosedEmail = async (ticket, toEmail, ccEmail = null) => 
   const headline = `✅ ตั๋วช่วยเหลือของคุณได้รับการแก้ไขเสร็จสิ้นแล้ว`;
   const typeLabel = `ปิดงานเสร็จสิ้น (Ticket Resolved)`;
   
-  const html = getFormattedTicketEmailHTML(ticket, 'closed', headline, typeLabel);
+  const moduleDesc = await getModuleDescription(ticket.module);
+  const ticketWithModuleDesc = { ...ticket, moduleDescription: moduleDesc };
+  
+  const html = getFormattedTicketEmailHTML(ticketWithModuleDesc, 'closed', headline, typeLabel);
 
   const mailOptions = {
     to: toEmail,

@@ -71,6 +71,7 @@ CREATE TABLE IF NOT EXISTS customers (
   cust_num VARCHAR(50) UNIQUE NOT NULL,
   cust_name VARCHAR(150) NOT NULL,
   contact_email VARCHAR(100),
+  contract_email VARCHAR(255),
   version VARCHAR(100),
   license VARCHAR(100),
   account_owner VARCHAR(100),

@@ -8,6 +8,7 @@ const CustomerManagement = () => {
   const [error, setError] = useState(null);
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   // Add form state
   const [newCustNum, setNewCustNum] = useState('');
@@ -59,6 +60,19 @@ const CustomerManagement = () => {
     fetchCustomers();
   }, []);
 
+  const resetNewForm = () => {
+    setNewCustNum('');
+    setNewCustName('');
+    setNewContactEmail('');
+    setNewVersion('');
+    setNewLicense('');
+    setNewAccountOwner('');
+    setNewInforMA('');
+    setNewPpccAppMA('');
+    setNewPpccCustMA('');
+    setNewPpccTechMA('');
+  };
+
   const handleAddCustomer = async (e) => {
     e.preventDefault();
     setError(null);
@@ -89,16 +103,8 @@ const CustomerManagement = () => {
       }
 
       await fetchCustomers();
-      setNewCustNum('');
-      setNewCustName('');
-      setNewContactEmail('');
-      setNewVersion('');
-      setNewLicense('');
-      setNewAccountOwner('');
-      setNewInforMA('');
-      setNewPpccAppMA('');
-      setNewPpccCustMA('');
-      setNewPpccTechMA('');
+      resetNewForm();
+      setIsModalOpen(false);
     } catch (err) {
       setError(err.message);
     }
@@ -174,99 +180,215 @@ const CustomerManagement = () => {
 
   return (
     <div className="glass-card" style={{ padding: '2rem', textAlign: 'left' }}>
-      <h3 style={{ fontSize: '1.25rem', marginBottom: '1.25rem', color: '#0f172a', borderBottom: '1px solid var(--glass-border)', paddingBottom: '0.75rem' }}>
-        🤝 จัดการลูกค้า (Customers)
-      </h3>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', borderBottom: '1px solid var(--glass-border)', paddingBottom: '0.75rem' }}>
+        <h3 style={{ fontSize: '1.25rem', color: '#0f172a', margin: 0 }}>
+          🤝 จัดการลูกค้า (Customers)
+        </h3>
+        <button 
+          onClick={() => setIsModalOpen(true)} 
+          className="btn btn-primary" 
+          style={{ padding: '0.5rem 1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem', borderRadius: '10px', fontSize: '0.9rem' }}
+        >
+          <span>➕ เพิ่มลูกค้าใหม่</span>
+        </button>
+      </div>
       
       {error && <div style={{ background: '#fee2e2', color: '#ef4444', padding: '1rem', borderRadius: '8px', marginBottom: '1.5rem', fontSize: '0.9rem' }}>{error}</div>}
 
-      <form onSubmit={handleAddCustomer} style={{ display: 'flex', gap: '0.75rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
-        <input
-          type="text"
-          className="glass-input"
-          placeholder="รหัสลูกค้า(Customer Number)"
-          value={newCustNum}
-          onChange={(e) => setNewCustNum(e.target.value)}
-          required
-          style={{ margin: 0, flex: 1, minWidth: '150px' }}
-        />
-        <input
-          type="text"
-          className="glass-input"
-          placeholder="ชื่อลูกค้า(Customer Name)"
-          value={newCustName}
-          onChange={(e) => setNewCustName(e.target.value)}
-          required
-          style={{ margin: 0, flex: 2, minWidth: '200px' }}
-        />
-        <input
-          type="email"
-          className="glass-input"
-          placeholder="Contact Email"
-          value={newContactEmail}
-          onChange={(e) => setNewContactEmail(e.target.value)}
-          style={{ margin: 0, flex: 2, minWidth: '200px' }}
-        />
-        <input
-          type="text"
-          className="glass-input"
-          placeholder="Version"
-          value={newVersion}
-          onChange={(e) => setNewVersion(e.target.value)}
-          style={{ margin: 0, flex: 1, minWidth: '120px' }}
-        />
-        <input
-          type="text"
-          className="glass-input"
-          placeholder="License"
-          value={newLicense}
-          onChange={(e) => setNewLicense(e.target.value)}
-          style={{ margin: 0, flex: 1, minWidth: '120px' }}
-        />
-        <input
-          type="text"
-          className="glass-input"
-          placeholder="Account Owner"
-          value={newAccountOwner}
-          onChange={(e) => setNewAccountOwner(e.target.value)}
-          style={{ margin: 0, flex: 1, minWidth: '120px' }}
-        />
-        <input
-          type="text"
-          className="glass-input"
-          placeholder="Infor MA"
-          value={newInforMA}
-          onChange={(e) => setNewInforMA(e.target.value)}
-          style={{ margin: 0, flex: 1, minWidth: '100px' }}
-        />
-        <input
-          type="text"
-          className="glass-input"
-          placeholder="PPCC App_MA"
-          value={newPpccAppMA}
-          onChange={(e) => setNewPpccAppMA(e.target.value)}
-          style={{ margin: 0, flex: 1, minWidth: '100px' }}
-        />
-        <input
-          type="text"
-          className="glass-input"
-          placeholder="PPCC Cust_MA"
-          value={newPpccCustMA}
-          onChange={(e) => setNewPpccCustMA(e.target.value)}
-          style={{ margin: 0, flex: 1, minWidth: '100px' }}
-        />
-        <input
-          type="text"
-          className="glass-input"
-          placeholder="PPCC Tech_MA"
-          value={newPpccTechMA}
-          onChange={(e) => setNewPpccTechMA(e.target.value)}
-          style={{ margin: 0, flex: 1, minWidth: '100px' }}
-        />
-        <button type="submit" className="btn btn-primary" disabled={!newCustNum.trim() || !newCustName.trim()} style={{ padding: '0.75rem 2rem', whiteSpace: 'nowrap' }}>
-          ➕ เพิ่มลูกค้า
-        </button>
-      </form>
+      {/* Modal Popup Form for Adding Customer */}
+      {isModalOpen && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(15, 23, 42, 0.45)',
+          backdropFilter: 'blur(8px)',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 1000
+        }}>
+          <div className="glass-card" style={{
+            width: '100%',
+            maxWidth: '650px',
+            padding: '2rem',
+            background: '#ffffff',
+            boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04)',
+            borderRadius: '16px',
+            border: '1px solid var(--glass-border)',
+            textAlign: 'left',
+            maxHeight: '90vh',
+            overflowY: 'auto'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid var(--glass-border)', paddingBottom: '0.75rem' }}>
+              <h4 style={{ fontSize: '1.15rem', fontWeight: 700, color: '#0f172a', margin: 0 }}>
+                ➕ เพิ่มข้อมูลลูกค้าใหม่ (Add Customer)
+              </h4>
+              <button 
+                onClick={() => {
+                  setIsModalOpen(false);
+                  resetNewForm();
+                }}
+                style={{ background: 'none', border: 'none', fontSize: '1.25rem', cursor: 'pointer', color: '#64748b' }}
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleAddCustomer}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
+                <div style={{ gridColumn: 'span 2' }}>
+                  <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: '#475569', marginBottom: '0.35rem' }}>ชื่อลูกค้า (Customer Name) *</label>
+                  <input
+                    type="text"
+                    className="glass-input"
+                    placeholder="ระบุชื่อบริษัท/ชื่อลูกค้า"
+                    value={newCustName}
+                    onChange={(e) => setNewCustName(e.target.value)}
+                    required
+                    style={{ margin: 0, width: '100%' }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: '#475569', marginBottom: '0.35rem' }}>รหัสลูกค้า (Cust Num) *</label>
+                  <input
+                    type="text"
+                    className="glass-input"
+                    placeholder="เช่น ADI, ART"
+                    value={newCustNum}
+                    onChange={(e) => setNewCustNum(e.target.value)}
+                    required
+                    style={{ margin: 0, width: '100%' }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: '#475569', marginBottom: '0.35rem' }}>เวอร์ชัน (Version)</label>
+                  <input
+                    type="text"
+                    className="glass-input"
+                    placeholder="เช่น SL90110"
+                    value={newVersion}
+                    onChange={(e) => setNewVersion(e.target.value)}
+                    style={{ margin: 0, width: '100%' }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: '#475569', marginBottom: '0.35rem' }}>อีเมลติดต่อ (Contact Email)</label>
+                  <input
+                    type="email"
+                    className="glass-input"
+                    placeholder="contact@company.com"
+                    value={newContactEmail}
+                    onChange={(e) => setNewContactEmail(e.target.value)}
+                    style={{ margin: 0, width: '100%' }}
+                  />
+                </div>
+
+
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: '#475569', marginBottom: '0.35rem' }}>License</label>
+                  <input
+                    type="text"
+                    className="glass-input"
+                    placeholder="ระบุสิทธิ์ใช้งาน"
+                    value={newLicense}
+                    onChange={(e) => setNewLicense(e.target.value)}
+                    style={{ margin: 0, width: '100%' }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: '#475569', marginBottom: '0.35rem' }}>Account Owner</label>
+                  <input
+                    type="text"
+                    className="glass-input"
+                    placeholder="ผู้รับผิดชอบดูแลลูกค้า"
+                    value={newAccountOwner}
+                    onChange={(e) => setNewAccountOwner(e.target.value)}
+                    style={{ margin: 0, width: '100%' }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: '#475569', marginBottom: '0.35rem' }}>Infor MA</label>
+                  <input
+                    type="text"
+                    className="glass-input"
+                    placeholder="เช่น YES, NO"
+                    value={newInforMA}
+                    onChange={(e) => setNewInforMA(e.target.value)}
+                    style={{ margin: 0, width: '100%' }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: '#475569', marginBottom: '0.35rem' }}>PPCC App MA</label>
+                  <input
+                    type="text"
+                    className="glass-input"
+                    placeholder="เช่น YES, NO"
+                    value={newPpccAppMA}
+                    onChange={(e) => setNewPpccAppMA(e.target.value)}
+                    style={{ margin: 0, width: '100%' }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: '#475569', marginBottom: '0.35rem' }}>PPCC Cust MA</label>
+                  <input
+                    type="text"
+                    className="glass-input"
+                    placeholder="เช่น YES, NO"
+                    value={newPpccCustMA}
+                    onChange={(e) => setNewPpccCustMA(e.target.value)}
+                    style={{ margin: 0, width: '100%' }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: '#475569', marginBottom: '0.35rem' }}>PPCC Tech MA</label>
+                  <input
+                    type="text"
+                    className="glass-input"
+                    placeholder="เช่น YES, NO"
+                    value={newPpccTechMA}
+                    onChange={(e) => setNewPpccTechMA(e.target.value)}
+                    style={{ margin: 0, width: '100%' }}
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', borderTop: '1px solid var(--glass-border)', paddingTop: '1.25rem' }}>
+                <button 
+                  type="button" 
+                  className="btn btn-secondary" 
+                  onClick={() => {
+                    setIsModalOpen(false);
+                    resetNewForm();
+                  }}
+                  style={{ padding: '0.6rem 1.5rem' }}
+                >
+                  ยกเลิก
+                </button>
+                <button 
+                  type="submit" 
+                  className="btn btn-primary" 
+                  disabled={!newCustNum.trim() || !newCustName.trim()} 
+                  style={{ padding: '0.6rem 1.75rem' }}
+                >
+                  💾 บันทึกข้อมูล
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Pagination Controls Top */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', fontSize: '0.9rem' }}>
@@ -297,6 +419,7 @@ const CustomerManagement = () => {
             <tr style={{ borderBottom: '2.5px solid var(--glass-border)', color: '#475569', fontWeight: 600, fontSize: '0.82rem', textTransform: 'uppercase', letterSpacing: '0.04em', background: 'rgba(0, 0, 0, 0.015)' }}>
               <th style={{ padding: '1rem 0.75rem', textAlign: 'left', whiteSpace: 'nowrap' }}>Customer Number</th>
               <th style={{ padding: '1rem 0.75rem', textAlign: 'left', whiteSpace: 'nowrap' }}>Customer Name</th>
+              <th style={{ padding: '1rem 0.75rem', textAlign: 'left', whiteSpace: 'nowrap' }}>Contact Email</th>
               <th style={{ padding: '1rem 0.75rem', textAlign: 'left', whiteSpace: 'nowrap' }}>Version</th>
               <th style={{ padding: '1rem 0.75rem', textAlign: 'left', whiteSpace: 'nowrap' }}>License</th>
               <th style={{ padding: '1rem 0.75rem', textAlign: 'left', whiteSpace: 'nowrap' }}>Account Owner</th>
@@ -310,7 +433,7 @@ const CustomerManagement = () => {
           <tbody>
             {customers.length === 0 ? (
               <tr>
-                <td colSpan="10" style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>ยังไม่มีข้อมูลลูกค้า</td>
+                <td colSpan="11" style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>ยังไม่มีข้อมูลลูกค้า</td>
               </tr>
             ) : (
               currentCustomers.map(c => (
@@ -343,6 +466,20 @@ const CustomerManagement = () => {
                       c.cust_name
                     )}
                   </td>
+                  <td style={{ padding: '1rem 0.75rem', color: '#475569' }}>
+                    {editingId === c.id ? (
+                      <input
+                        type="email"
+                        className="glass-input"
+                        value={editingContactEmail}
+                        onChange={(e) => setEditingContactEmail(e.target.value)}
+                        style={{ margin: 0, padding: '0.25rem 0.5rem', fontSize: '0.95rem', width: '180px' }}
+                      />
+                    ) : (
+                      c.contact_email || '-'
+                    )}
+                  </td>
+
                   <td style={{ padding: '1rem 0.75rem', color: '#475569' }}>
                     {editingId === c.id ? (
                       <input

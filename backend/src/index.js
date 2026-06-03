@@ -68,6 +68,11 @@ const initDatabaseSchema = async () => {
     await pool.query(`
       ALTER TABLE users ALTER COLUMN is_verified SET DEFAULT FALSE;
     `);
+
+    // Add contract_email to customers if it does not exist
+    await pool.query(`
+      ALTER TABLE customers ADD COLUMN IF NOT EXISTS contract_email VARCHAR(255);
+    `);
     
     console.log('✅ Database schema checks completed successfully.');
   } catch (error) {
