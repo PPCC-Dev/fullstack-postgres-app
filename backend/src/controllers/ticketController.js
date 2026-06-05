@@ -3,7 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
-import { sendTicketCreatedEmail, sendTicketUpdatedEmail, sendTicketClosedEmail } from '../services/emailService.js';
+import { sendTicketCreatedEmail, sendTicketUpdatedEmail, sendTicketClosedEmail, sendTicketChangedEmail } from '../services/emailService.js';
 
 // Helper to create in-app notifications
 const createNotification = async (userId, title, message, type, ticketId) => {
@@ -18,10 +18,15 @@ const createNotification = async (userId, title, message, type, ticketId) => {
   }
 };
 
-// 1. Create a Ticket (Customer Only)
+// 1. Create a Ticket
 export const createTicket = async (req, res) => {
-  const { title, description, category, priority, module, form_name, additional_email, cust_num, program_type, issue_type } = req.body;
+  const { title, description, priority, module, form_name, additional_email, program_type, issue_type } = req.body;
+  let cust_num = req.body.cust_num;
   const customerId = req.user.id;
+
+  if (req.user.role === 'customer') {
+    cust_num = req.user.cust_num;
+  }
 
   if (!title || !description || !cust_num) {
     return res.status(400).json({ error: 'Title, description, and Customer are required.' });
@@ -34,10 +39,6 @@ export const createTicket = async (req, res) => {
   const attachmentName = req.files && req.files.length > 0 ? req.files[0].originalname : null;
 
   try {
-    const categoriesResult = await pool.query('SELECT name FROM categories');
-    const validCategories = categoriesResult.rows.map(r => r.name);
-    const ticketCategory = validCategories.includes(category) ? category : (validCategories[0] || 'Technical');
-
     const modulesResult = await pool.query('SELECT name FROM modules');
     const validModules = modulesResult.rows.map(r => r.name);
     const ticketModule = validModules.includes(module) ? module : (validModules[0] || 'GeneralLedger');
@@ -50,11 +51,21 @@ export const createTicket = async (req, res) => {
     const validIssueTypes = issueTypesResult.rows.map(r => r.name);
     const ticketIssueType = validIssueTypes.includes(issue_type) ? issue_type : (validIssueTypes[0] || 'Technical');
 
-    // Generate custom ticket_number: custnum + YY + MM + running 3 digit
+    // Fetch customer prefix if available
+    const customerRes = await pool.query('SELECT prefix FROM customers WHERE cust_num = $1', [cust_num]);
+    let basePrefix = cust_num;
+    if (customerRes.rows.length > 0 && customerRes.rows[0].prefix) {
+      basePrefix = customerRes.rows[0].prefix;
+    }
+
+    // Generate custom ticket_number with exact 10 chars
     const now = new Date();
     const yearStr = now.getFullYear().toString().slice(2);
     const monthStr = (now.getMonth() + 1).toString().padStart(2, '0');
-    const prefix = `${cust_num}${yearStr}${monthStr}`;
+    const prefix = `${basePrefix}${yearStr}${monthStr}`;
+    
+    const targetTotalLength = 10;
+    const runningNumLength = Math.max(1, targetTotalLength - prefix.length);
     
     // Get latest ticket with this prefix to calculate next running number
     const latestRes = await pool.query(
@@ -64,19 +75,19 @@ export const createTicket = async (req, res) => {
     
     let runningNumber = 1;
     if (latestRes.rows.length > 0 && latestRes.rows[0].ticket_number) {
-      const latestNum = latestRes.rows[0].ticket_number.slice(-3);
+      const latestNum = latestRes.rows[0].ticket_number.slice(-runningNumLength);
       const parsedNum = parseInt(latestNum, 10);
       if (!isNaN(parsedNum)) {
         runningNumber = parsedNum + 1;
       }
     }
-    const ticketNumber = `${prefix}${runningNumber.toString().padStart(3, '0')}`;
+    const ticketNumber = `${prefix}${runningNumber.toString().padStart(runningNumLength, '0')}`;
 
     const newTicketResult = await pool.query(
-      `INSERT INTO tickets (ticket_number, title, description, category, module, program_type, issue_type, form_name, additional_email, priority, status, customer_id, cust_num, attachment_url, attachment_name) 
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'open', $11, $12, $13, $14) 
+      `INSERT INTO tickets (ticket_number, title, description, module, program_type, issue_type, form_name, additional_email, priority, status, customer_id, cust_num, attachment_url, attachment_name) 
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'open', $10, $11, $12, $13) 
        RETURNING *`,
-      [ticketNumber, title, description, ticketCategory, ticketModule, ticketProgramType, ticketIssueType, form_name || null, additional_email || null, ticketPriority, customerId, cust_num, attachmentUrl, attachmentName]
+      [ticketNumber, title, description, ticketModule, ticketProgramType, ticketIssueType, form_name || null, additional_email || null, ticketPriority, customerId, cust_num, attachmentUrl, attachmentName]
     );
 
     const newTicket = newTicketResult.rows[0];
@@ -113,14 +124,15 @@ export const createTicket = async (req, res) => {
       const customerEmail = customerRes.rows[0]?.email;
       const adminEmails = adminsRes.rows.map(r => r.email);
       
-      await sendTicketCreatedEmail(newTicket, customerEmail, adminEmails, additional_email);
+      // Send email ONLY to customer (no admin/agent emails)
+      await sendTicketCreatedEmail(newTicket, customerEmail, [], additional_email);
 
       // Create in-app notifications
       for (const admin of adminsRes.rows) {
         await createNotification(
           admin.id,
-          '🎫 ตั๋วใหม่ได้รับการแจ้งความช่วยเหลือ',
-          `ลูกค้าได้ส่งตั๋วใหม่ #${newTicket.ticket_number}: "${newTicket.title}"`,
+          '🎫 เคสใหม่ได้รับการแจ้งความช่วยเหลือ',
+          `ลูกค้าได้ส่งเคสใหม่ #${newTicket.ticket_number}: "${newTicket.title}"`,
           'ticket_created',
           newTicket.id
         );
@@ -262,11 +274,25 @@ export const claimTicket = async (req, res) => {
     // Create notification for customer
     await createNotification(
       ticket.customer_id,
-      '👨‍💻 เจ้าหน้าที่กำลังรับเรื่องดูแลตั๋วของคุณ',
-      `เจ้าหน้าที่ ${agentName} ได้รับเคลมตั๋ว #${ticket.ticket_number} ของคุณแล้ว`,
+      '👨‍💻 เจ้าหน้าที่กำลังรับเรื่องดูแลเคสของคุณ',
+      `เจ้าหน้าที่ ${agentName} ได้รับเคลมเคส #${ticket.ticket_number} ของคุณแล้ว`,
       'ticket_assigned',
       ticket.id
     );
+
+    // Send email notification to customer
+    try {
+      const customerRes = await pool.query('SELECT email FROM users WHERE id = $1', [ticket.customer_id]);
+      const customerEmail = customerRes.rows[0]?.email;
+      await sendTicketChangedEmail(
+        updatedResult.rows[0], 
+        customerEmail, 
+        ticket.additional_email, 
+        `เคสช่วยเหลือของคุณได้รับการรับเรื่องโดยเจ้าหน้าที่ ${agentName} เรียบร้อยแล้ว`
+      );
+    } catch (emailErr) {
+      console.error('Failed to send claim email notification:', emailErr);
+    }
 
     return res.status(200).json(updatedResult.rows[0]);
   } catch (error) {
@@ -324,13 +350,30 @@ export const updateTicketStatus = async (req, res) => {
           // Create notification for customer
           await createNotification(
             ticket.customer_id,
-            '✅ ตั๋วของคุณได้รับการแก้ไขเสร็จสิ้นแล้ว',
-            `ตั๋วช่วยเหลือ #${updatedTicket.ticket_number} ได้รับการแก้ไขและปิดงานเรียบร้อยแล้ว: "${updatedTicket.title}"`,
+            '✅ เคสของคุณได้รับการแก้ไขเสร็จสิ้นแล้ว',
+            `เคสช่วยเหลือ #${updatedTicket.ticket_number} ได้รับการแก้ไขและปิดงานเรียบร้อยแล้ว: "${updatedTicket.title}"`,
             'ticket_closed',
             updatedTicket.id
           );
         } catch (emailErr) {
           console.error('Failed to send closing email/notification:', emailErr);
+        }
+      } else {
+        // Status changed to something other than resolved (e.g. open, assigned)
+        try {
+          const customerRes = await pool.query('SELECT email FROM users WHERE id = $1', [ticket.customer_id]);
+          const customerEmail = customerRes.rows[0]?.email;
+          const statusMap = { 'open': 'เปิดรับเรื่อง', 'assigned': 'กำลังดำเนินการ' };
+          const thStatus = statusMap[status] || status.toUpperCase();
+          
+          await sendTicketChangedEmail(
+            updatedTicket, 
+            customerEmail, 
+            ticket.additional_email, 
+            `สถานะเคสช่วยเหลือของคุณถูกเปลี่ยนเป็น: ${thStatus}`
+          );
+        } catch (emailErr) {
+          console.error('Failed to send status change email:', emailErr);
         }
       }
       return res.status(200).json(updatedTicket);
@@ -353,8 +396,8 @@ export const updateTicketStatus = async (req, res) => {
         if (ticket.agent_id) {
           await createNotification(
             ticket.agent_id,
-            '⚠️ ลูกค้าได้ทำการเปิดตั๋วช่วยเหลืออีกครั้ง',
-            `ลูกค้าได้ทำการเปิดตั๋วช่วยเหลือ #${reopenedTicket.ticket_number} อีกครั้ง: "${reopenedTicket.title}"`,
+            '⚠️ ลูกค้าได้ทำการเปิดเคสช่วยเหลืออีกครั้ง',
+            `ลูกค้าได้ทำการเปิดเคสช่วยเหลือ #${reopenedTicket.ticket_number} อีกครั้ง: "${reopenedTicket.title}"`,
             'ticket_reopened',
             reopenedTicket.id
           );
@@ -378,8 +421,8 @@ export const updateTicketStatus = async (req, res) => {
             if (ticket.agent_id) {
               await createNotification(
                 ticket.agent_id,
-                '✅ ลูกค้าได้ทำการปิดตั๋วช่วยเหลือเรียบร้อยแล้ว',
-                `ลูกค้าได้ทำการยืนยันแก้ไขเสร็จสิ้นและปิดตั๋ว #${updatedTicket.ticket_number}: "${updatedTicket.title}"`,
+                '✅ ลูกค้าได้ทำการปิดเคสช่วยเหลือเรียบร้อยแล้ว',
+                `ลูกค้าได้ทำการยืนยันแก้ไขเสร็จสิ้นและปิดเคส #${updatedTicket.ticket_number}: "${updatedTicket.title}"`,
                 'ticket_closed',
                 updatedTicket.id
               );
@@ -456,7 +499,7 @@ export const addMessage = async (req, res) => {
           await createNotification(
             ticket.agent_id,
             '🔒 โน้ตภายในใหม่ถูกบันทึก',
-            `${msgData.sender_name} ได้เขียนบันทึกข้อความภายในในตั๋ว #${ticket.ticket_number}`,
+            `${msgData.sender_name} ได้เขียนบันทึกข้อความภายในในเคส #${ticket.ticket_number}`,
             'ticket_updated',
             ticket.id
           );
@@ -466,25 +509,16 @@ export const addMessage = async (req, res) => {
         const customerRes = await pool.query('SELECT email FROM users WHERE id = $1', [ticket.customer_id]);
         const customerEmail = customerRes.rows[0]?.email;
         
-        let toEmail;
         if (role === 'agent' || role === 'admin') {
-          toEmail = customerEmail;
+          await sendTicketUpdatedEmail(ticket, customerEmail, ticket.additional_email, message_text, msgData.sender_name);
         } else {
-          if (ticket.agent_id) {
-            const agentRes = await pool.query('SELECT email FROM users WHERE id = $1', [ticket.agent_id]);
-            toEmail = agentRes.rows[0]?.email;
-          } else {
-            const adminsRes = await pool.query(`
-              SELECT u.email 
-              FROM users u
-              LEFT JOIN roles r ON LOWER(u.role) = LOWER(r.name)
-              WHERE LOWER(COALESCE(r.base_role, u.role)) IN ('admin', 'agent')
-            `);
-            toEmail = adminsRes.rows.map(r => r.email).join(',');
+          // Customer sent message: Notify the contact_email in customers data
+          const contactEmailRes = await pool.query('SELECT contact_email FROM customers WHERE cust_num = $1', [ticket.cust_num]);
+          const contactEmail = contactEmailRes.rows[0]?.contact_email;
+          if (contactEmail) {
+            await sendTicketUpdatedEmail(ticket, contactEmail, null, message_text, msgData.sender_name);
           }
         }
-        
-        await sendTicketUpdatedEmail(ticket, toEmail, ticket.additional_email, message_text, msgData.sender_name);
 
         // Public message: In-app notifications
         if (role === 'agent' || role === 'admin') {
@@ -492,7 +526,7 @@ export const addMessage = async (req, res) => {
           await createNotification(
             ticket.customer_id,
             '💬 ข้อความใหม่จากเจ้าหน้าที่',
-            `เจ้าหน้าที่ ${msgData.sender_name} ได้เพิ่มข้อความในตั๋ว #${ticket.ticket_number}: "${message_text.substring(0, 60)}..."`,
+            `เจ้าหน้าที่ ${msgData.sender_name} ได้เพิ่มข้อความในเคส #${ticket.ticket_number}: "${message_text.substring(0, 60)}..."`,
             'ticket_updated',
             ticket.id
           );
@@ -502,7 +536,7 @@ export const addMessage = async (req, res) => {
             await createNotification(
               ticket.agent_id,
               '💬 ข้อความเพิ่มเติมจากลูกค้า',
-              `ลูกค้า ${msgData.sender_name} ได้ส่งข้อความเพิ่มเติมในตั๋ว #${ticket.ticket_number}: "${message_text.substring(0, 60)}..."`,
+              `ลูกค้า ${msgData.sender_name} ได้ส่งข้อความเพิ่มเติมในเคส #${ticket.ticket_number}: "${message_text.substring(0, 60)}..."`,
               'ticket_updated',
               ticket.id
             );
@@ -517,7 +551,7 @@ export const addMessage = async (req, res) => {
               await createNotification(
                 admin.id,
                 '💬 ข้อความเพิ่มเติมจากลูกค้า',
-                `ลูกค้า ${msgData.sender_name} ได้ส่งข้อความเพิ่มเติมในตั๋ว #${ticket.ticket_number}: "${message_text.substring(0, 60)}..."`,
+                `ลูกค้า ${msgData.sender_name} ได้ส่งข้อความเพิ่มเติมในเคส #${ticket.ticket_number}: "${message_text.substring(0, 60)}..."`,
                 'ticket_updated',
                 ticket.id
               );
@@ -587,13 +621,6 @@ export const getAgentStats = async (req, res) => {
        GROUP BY priority`
     );
 
-    // 3. Category counts
-    const categoryCountsResult = await pool.query(
-      `SELECT category, COUNT(*) as count 
-       FROM tickets 
-       GROUP BY category`
-    );
-
     // 4. Module counts
     const moduleCountsResult = await pool.query(
       `SELECT module, COUNT(*) as count 
@@ -601,22 +628,17 @@ export const getAgentStats = async (req, res) => {
        GROUP BY module`
     );
 
-    // Fetch all categories and modules to initialize counts to 0
-    const dbCategories = await pool.query('SELECT name FROM categories');
+    // Fetch all modules to initialize counts to 0
     const dbModules = await pool.query('SELECT name FROM modules');
 
     // Format results
     const stats = {
       status: { open: 0, assigned: 0, resolved: 0 },
       priority: { low: 0, medium: 0, high: 0 },
-      category: {},
+
       module: {},
       total: 0
     };
-
-    dbCategories.rows.forEach(c => {
-      stats.category[c.name] = 0;
-    });
 
     dbModules.rows.forEach(m => {
       stats.module[m.name] = 0;
@@ -632,10 +654,6 @@ export const getAgentStats = async (req, res) => {
       if (stats.priority[r.priority] !== undefined) {
         stats.priority[r.priority] = parseInt(r.count, 10);
       }
-    });
-
-    categoryCountsResult.rows.forEach(r => {
-      stats.category[r.category] = parseInt(r.count, 10);
     });
 
     moduleCountsResult.rows.forEach(r => {
@@ -728,103 +746,6 @@ export const deleteErrorType = async (req, res) => {
   } catch (error) {
     console.error('Error deleting error type:', error);
     return res.status(500).json({ error: 'Server error while deleting error type.' });
-  }
-};
-export const getCategories = async (req, res) => {
-  try {
-    const result = await pool.query('SELECT * FROM categories ORDER BY name ASC');
-    return res.status(200).json(result.rows);
-  } catch (error) {
-    console.error('Error fetching categories:', error);
-    return res.status(500).json({ error: 'Server error while fetching categories.' });
-  }
-};
-
-export const createCategory = async (req, res) => {
-  const { name } = req.body;
-  if (!name || name.trim() === '') {
-    return res.status(400).json({ error: 'Category name is required.' });
-  }
-
-  try {
-    const checkExist = await pool.query('SELECT * FROM categories WHERE LOWER(name) = LOWER($1)', [name.trim()]);
-    if (checkExist.rows.length > 0) {
-      return res.status(400).json({ error: 'Category already exists.' });
-    }
-
-    const result = await pool.query(
-      'INSERT INTO categories (name) VALUES ($1) RETURNING *',
-      [name.trim()]
-    );
-    return res.status(201).json(result.rows[0]);
-  } catch (error) {
-    console.error('Error creating category:', error);
-    return res.status(500).json({ error: 'Server error while creating category.' });
-  }
-};
-
-export const deleteCategory = async (req, res) => {
-  const { name } = req.params;
-
-  try {
-    const countResult = await pool.query('SELECT COUNT(*) FROM categories');
-    if (parseInt(countResult.rows[0].count, 10) <= 1) {
-      return res.status(400).json({ error: 'Cannot delete the last remaining category.' });
-    }
-
-    const result = await pool.query(
-      'DELETE FROM categories WHERE name = $1 RETURNING *',
-      [name]
-    );
-
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Category not found.' });
-    }
-
-    return res.status(200).json({ message: 'Category deleted successfully.', deleted: result.rows[0] });
-  } catch (error) {
-    console.error('Error deleting category:', error);
-    return res.status(500).json({ error: 'Server error while deleting category.' });
-  }
-};
-
-export const updateCategory = async (req, res) => {
-  const { name } = req.params;
-  const { newName } = req.body;
-
-  if (!newName || !newName.trim()) {
-    return res.status(400).json({ error: 'New category name is required.' });
-  }
-
-  try {
-    const checkResult = await pool.query('SELECT * FROM categories WHERE name = $1', [newName.trim()]);
-    if (checkResult.rows.length > 0 && newName.trim() !== name) {
-      return res.status(400).json({ error: 'New category name already exists.' });
-    }
-
-    await pool.query('BEGIN');
-
-    const result = await pool.query(
-      'UPDATE categories SET name = $1 WHERE name = $2 RETURNING *',
-      [newName.trim(), name]
-    );
-
-    if (result.rows.length === 0) {
-      await pool.query('ROLLBACK');
-      return res.status(404).json({ error: 'Category not found.' });
-    }
-
-    await pool.query(
-      'UPDATE tickets SET category = $1 WHERE category = $2',
-      [newName.trim(), name]
-    );
-
-    await pool.query('COMMIT');
-    return res.status(200).json(result.rows[0]);
-  } catch (error) {
-    await pool.query('ROLLBACK');
-    console.error('Error updating category:', error);
-    return res.status(500).json({ error: 'Server error while updating category.' });
   }
 };
 
@@ -1169,7 +1090,23 @@ export const updateTicketSolutionWorkaround = async (req, res) => {
       [ticketId]
     );
 
-    return res.status(200).json(ticketResult.rows[0]);
+    const updatedTicket = ticketResult.rows[0];
+
+    // Send email notification to customer
+    try {
+      const customerRes = await pool.query('SELECT email FROM users WHERE id = $1', [updatedTicket.customer_id]);
+      const customerEmail = customerRes.rows[0]?.email;
+      await sendTicketChangedEmail(
+        updatedTicket, 
+        customerEmail, 
+        updatedTicket.additional_email, 
+        `มีการอัปเดตข้อมูล วิธีแก้ไขปัญหา (Solution) / วิธีแก้ไขเบื้องต้น (Workaround) สำหรับเคสช่วยเหลือของคุณ`
+      );
+    } catch (emailErr) {
+      console.error('Failed to send solution update email notification:', emailErr);
+    }
+
+    return res.status(200).json(updatedTicket);
   } catch (error) {
     console.error('Error updating solution/workaround:', error);
     return res.status(500).json({ error: 'Server error while updating solution/workaround.' });

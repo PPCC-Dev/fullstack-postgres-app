@@ -203,8 +203,56 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  // Forgot Password handler
+  const forgotPassword = async (email) => {
+    try {
+      const response = await fetch(`${API_URL}/auth/forgot-password`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to request password reset');
+      }
+
+      return { success: true, message: data.message };
+    } catch (error) {
+      console.error('Forgot password error:', error);
+      return { success: false, error: error.message };
+    }
+  };
+
+  // Reset Password handler
+  const resetPassword = async (token, newPassword) => {
+    try {
+      const response = await fetch(`${API_URL}/auth/reset-password`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ token, newPassword })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to reset password');
+      }
+
+      return { success: true, message: data.message };
+    } catch (error) {
+      console.error('Reset password error:', error);
+      return { success: false, error: error.message };
+    }
+  };
+
   return (
-    <AuthContext.Provider value={{ user, token, loading, login, register, logout, updateProfile, changePassword, API_URL }}>
+    <AuthContext.Provider value={{ user, token, loading, login, register, logout, updateProfile, changePassword, forgotPassword, resetPassword, API_URL }}>
       {children}
     </AuthContext.Provider>
   );

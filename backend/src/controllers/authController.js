@@ -2,6 +2,8 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import pool from '../config/db.js';
 import dotenv from 'dotenv';
+import crypto from 'crypto';
+import { sendPasswordResetEmail } from '../services/emailService.js';
 
 dotenv.config();
 
@@ -317,4 +319,80 @@ export const changePassword = async (req, res) => {
   }
 };
 
+// 9. Forgot Password
+export const forgotPassword = async (req, res) => {
+  const { email } = req.body;
 
+  if (!email) {
+    return res.status(400).json({ error: 'กรุณากรอกอีเมล (Please provide an email)' });
+  }
+
+  try {
+    const userResult = await pool.query('SELECT id FROM users WHERE email = $1', [email.toLowerCase()]);
+    if (userResult.rows.length === 0) {
+      // Return 200 even if not found to prevent email enumeration
+      return res.status(200).json({ message: 'หากอีเมลนี้อยู่ในระบบ ระบบได้ส่งลิงก์รีเซ็ตรหัสผ่านไปให้แล้ว' });
+    }
+
+    const user = userResult.rows[0];
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    const hashedToken = crypto.createHash('sha256').update(resetToken).digest('hex');
+    const expires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+
+    await pool.query(
+      'UPDATE users SET reset_password_token = $1, reset_password_expires = $2 WHERE id = $3',
+      [hashedToken, expires, user.id]
+    );
+
+    const resetUrl = `${process.env.CLIENT_URL || 'http://localhost:5173'}/?resetToken=${resetToken}`;
+    await sendPasswordResetEmail(email, resetUrl);
+
+    return res.status(200).json({ message: 'ลิงก์สำหรับรีเซ็ตรหัสผ่านถูกส่งไปยังอีเมลของคุณแล้ว (Password reset link sent to your email)' });
+  } catch (error) {
+    console.error('Error in forgotPassword:', error);
+    return res.status(500).json({ error: 'เกิดข้อผิดพลาดจากเซิร์ฟเวอร์ (Server error)' });
+  }
+};
+
+// 10. Reset Password
+export const resetPassword = async (req, res) => {
+  const { token, newPassword } = req.body;
+
+  if (!token || !newPassword) {
+    return res.status(400).json({ error: 'ข้อมูลไม่ครบถ้วน (Missing token or new password)' });
+  }
+
+  const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]).{6,}$/;
+  if (!passwordRegex.test(newPassword)) {
+    return res.status(400).json({ 
+      error: 'รหัสผ่านใหม่ต้องมีความยาวอย่างน้อย 6 ตัวอักษร และประกอบด้วยตัวอักษรพิมพ์เล็ก (a-z) พิมพ์ใหญ่ (A-Z) ตัวเลข (0-9) และอักขระพิเศษอย่างน้อยอย่างละ 1 ตัว' 
+    });
+  }
+
+  try {
+    const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
+
+    const userResult = await pool.query(
+      'SELECT id FROM users WHERE reset_password_token = $1 AND reset_password_expires > NOW()',
+      [hashedToken]
+    );
+
+    if (userResult.rows.length === 0) {
+      return res.status(400).json({ error: 'โทเค็นไม่ถูกต้องหรือหมดอายุแล้ว (Invalid or expired token)' });
+    }
+
+    const user = userResult.rows[0];
+    const salt = await bcrypt.genSalt(10);
+    const newPasswordHash = await bcrypt.hash(newPassword, salt);
+
+    await pool.query(
+      'UPDATE users SET password_hash = $1, reset_password_token = NULL, reset_password_expires = NULL WHERE id = $2',
+      [newPasswordHash, user.id]
+    );
+
+    return res.status(200).json({ message: 'เปลี่ยนรหัสผ่านสำเร็จแล้ว (Password reset successful)' });
+  } catch (error) {
+    console.error('Error in resetPassword:', error);
+    return res.status(500).json({ error: 'เกิดข้อผิดพลาดจากเซิร์ฟเวอร์ (Server error)' });
+  }
+};

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
+import CreateTicketModal from '../components/CreateTicketModal';
 
 export default function CustomerDashboard({ onViewTicket }) {
   const { user, token, API_URL } = useAuth();
@@ -17,23 +18,8 @@ export default function CustomerDashboard({ onViewTicket }) {
   useEffect(() => {
     setCurrentPage(1);
   }, [statusFilter, sortOption]);
-
-  // New ticket form state
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [category, setCategory] = useState('');
-  const [module, setModule] = useState('');
-  const [programType, setProgramType] = useState('');
-  const [issueType, setIssueType] = useState('');
-  const [formName, setFormName] = useState('');
-  const [additionalEmail, setAdditionalEmail] = useState('');
-  const [priority, setPriority] = useState('medium');
-  const [formError, setFormError] = useState('');
-  const [formSubmitting, setFormSubmitting] = useState(false);
-  const [attachmentFiles, setAttachmentFiles] = useState([]);
-
   // Dynamic configuration lists
-  const [dbCategories, setDbCategories] = useState([]);
+
   const [dbModules, setDbModules] = useState([]);
   const [dbProgramTypes, setDbProgramTypes] = useState([]);
   const [dbIssueTypes, setDbIssueTypes] = useState([]);
@@ -64,15 +50,6 @@ export default function CustomerDashboard({ onViewTicket }) {
 
   const fetchConfig = async () => {
     try {
-      const catRes = await fetch(`${API_URL}/tickets/config/categories`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      if (catRes.ok) {
-        const catData = await catRes.json();
-        setDbCategories(catData);
-        if (catData.length > 0) setCategory(catData[0].name);
-      }
-
       const modRes = await fetch(`${API_URL}/tickets/config/modules`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -124,72 +101,6 @@ export default function CustomerDashboard({ onViewTicket }) {
     fetchTickets();
     fetchConfig();
   }, [token]);
-
-  const handleCreateTicket = async (e) => {
-    e.preventDefault();
-    setFormError('');
-    setFormSubmitting(true);
-
-    if (!title || !description || !custNum) {
-      setFormError('กรุณากรอกหัวข้อ รายละเอียด และเลือกลูกค้า');
-      setFormSubmitting(false);
-      return;
-    }
-
-    try {
-      const formData = new FormData();
-      formData.append('title', title);
-      formData.append('description', description);
-      formData.append('category', category);
-      formData.append('module', module);
-      formData.append('program_type', programType);
-      formData.append('issue_type', issueType);
-      formData.append('form_name', formName);
-      formData.append('additional_email', additionalEmail);
-      formData.append('priority', priority);
-      formData.append('cust_num', custNum);
-      
-      if (attachmentFiles && attachmentFiles.length > 0) {
-        attachmentFiles.forEach(file => {
-          formData.append('attachments', file);
-        });
-      }
-
-      const response = await fetch(`${API_URL}/tickets`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        },
-        body: formData
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to submit ticket');
-      }
-
-      // Reset form & reload
-      setTitle('');
-      setDescription('');
-      setCategory(dbCategories.length > 0 ? dbCategories[0].name : '');
-      setModule(dbModules.length > 0 ? dbModules[0].name : '');
-      setProgramType(dbProgramTypes.length > 0 ? dbProgramTypes[0].name : '');
-      setIssueType(dbIssueTypes.length > 0 ? dbIssueTypes[0].name : '');
-      setFormName('');
-      setAdditionalEmail('');
-      setPriority('medium');
-      setCustNum(dbCustomers[0]?.cust_num || '');
-      setAttachmentFiles([]);
-      setIsModalOpen(false);
-      fetchTickets();
-    } catch (err) {
-      console.error(err);
-      setFormError(err.message);
-    } finally {
-      setFormSubmitting(false);
-    }
-  };
 
   // Stat calculations
   const totalTickets = tickets.length;
@@ -310,7 +221,7 @@ export default function CustomerDashboard({ onViewTicket }) {
           ) : tickets.length === 0 ? (
             <div className="glass-card empty-state">
               <span className="empty-icon">📨</span>
-              <h3>ยังไม่มีตั๋วหรือเคสช่วยเหลือ</h3>
+              <h3>ยังไม่มีเคสหรือเคสช่วยเหลือ</h3>
               <p>หากคุณพบปัญหาการทำงานหรือต้องการข้อมูลสนับสนุน สามารถกดสร้างเคสใหม่ด้านขวาบนได้ทันที</p>
               <button className="btn btn-secondary" style={{ marginTop: '0.5rem' }} onClick={() => setIsModalOpen(true)}>
                 เริ่มต้นส่งเคสแรก
@@ -336,7 +247,7 @@ export default function CustomerDashboard({ onViewTicket }) {
                         {ticket.status === 'open' ? '• รอยืนยัน' :
                          ticket.status === 'assigned' ? '• กำลังดูแล' : '• เสร็จสิ้น'}
                       </span>
-                      <span className="badge badge-category">{ticket.category}</span>
+
                       <span className="badge badge-module">🧩 {ticket.module}</span>
                       <span className="badge" style={{ background: 'rgba(236, 72, 153, 0.1)', color: '#ec4899', border: '1px solid rgba(236, 72, 153, 0.2)' }}>
                         💻 {ticket.program_type || 'Standard'}
@@ -431,12 +342,12 @@ export default function CustomerDashboard({ onViewTicket }) {
               คู่มือแนะนำเบื้องต้น
             </h3>
             <p style={{ fontSize: '0.85rem', color: '#475569', lineHeight: 1.6 }}>
-              ตั๋วช่วยเหลือแต่ละใบสามารถใช้พิมพ์คุยกับเจ้าหน้าที่ได้แบบเรียลไทม์ คุณจะได้รับอีเมลตอบกลับหรือแจ้งเตือนเมื่อเจ้าหน้าที่รับเคลมเคสของคุณ
+              เคสช่วยเหลือแต่ละใบสามารถใช้พิมพ์คุยกับเจ้าหน้าที่ได้แบบเรียลไทม์ คุณจะได้รับอีเมลตอบกลับหรือแจ้งเตือนเมื่อเจ้าหน้าที่รับเคลมเคสของคุณ
             </p>
             <hr style={{ border: 'none', borderBottom: '1px solid var(--glass-border)', margin: '0.5rem 0' }} />
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.8rem', color: '#334155' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <span style={{ color: 'var(--status-open)' }}>●</span> รอยืนยัน = ตั๋วเข้าระบบ รอเจ้าหน้าที่มากดรับ
+                <span style={{ color: 'var(--status-open)' }}>●</span> รอยืนยัน = เคสเข้าระบบ รอเจ้าหน้าที่มากดรับ
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <span style={{ color: 'var(--status-assigned)' }}>●</span> กำลังดูแล = มีเจ้าหน้าที่รับเรื่องดูแลแล้ว
@@ -450,255 +361,14 @@ export default function CustomerDashboard({ onViewTicket }) {
       </div>
 
       {/* Ticket Creation Modal */}
-      {isModalOpen && (
-        <div className="modal-overlay">
-          <div className="glass-card modal-content glow-purple">
-            <button className="modal-close" onClick={() => setIsModalOpen(false)}>×</button>
-            <h2 style={{ marginBottom: '1.5rem', background: 'linear-gradient(135deg, #004bb5, #6366f1)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', fontWeight: 'bold' }}>
-              สร้างคำขอความช่วยเหลือใหม่
-            </h2>
-
-            {formError && (
-              <div className="alert-box alert-error">
-                <span>{formError}</span>
-              </div>
-            )}
-
-            <form onSubmit={handleCreateTicket}>
-              <div className="form-group">
-                <label htmlFor="ticket-title">หัวข้อของปัญหา (Title)</label>
-                <input
-                  type="text"
-                  id="ticket-title"
-                  className="glass-input"
-                  placeholder="เช่น ไม่สามารถดาวน์โหลดไฟล์รายงานได้ หรือ ต้องการขอใบกำกับภาษี"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  disabled={formSubmitting}
-                  required
-                />
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
-                <div className="form-group">
-                  <label htmlFor="ticket-additional-email">อีเมลเพิ่มเติม (CC)</label>
-                  <input
-                    type="email"
-                    id="ticket-additional-email"
-                    className="glass-input"
-                    placeholder="เช่น user@example.com (ใส่ได้ 1 อีเมล)"
-                    value={additionalEmail}
-                    onChange={(e) => setAdditionalEmail(e.target.value)}
-                    disabled={formSubmitting}
-                  />
-                </div>
-                <div className="form-group">
-                  <label htmlFor="ticket-customer">ลูกค้า (Customer Name)</label>
-                  <select
-                    id="ticket-customer"
-                    className="glass-input"
-                    value={custNum}
-                    onChange={(e) => setCustNum(e.target.value)}
-                    disabled={formSubmitting || dbCustomers.length === 0}
-                    style={{ background: 'var(--glass-bg)', cursor: 'pointer' }}
-                    required
-                  >
-                    {dbCustomers.length === 0 && <option value="">ไม่มีข้อมูลลูกค้า</option>}
-                    {dbCustomers.map(cust => (
-                      <option key={cust.id} value={cust.cust_num}>{cust.cust_name}</option>
-                    ))}
-                  </select>
-                </div>
-                <div className="form-group">
-                  <label htmlFor="ticket-form-name">หน้าจอที่เกี่ยวข้อง (Form Name)</label>
-                  <input
-                    type="text"
-                    id="ticket-form-name"
-                    className="glass-input"
-                    placeholder="เช่น AR-001 หรือ หน้าจอออกใบแจ้งหนี้"
-                    value={formName}
-                    onChange={(e) => setFormName(e.target.value)}
-                    disabled={formSubmitting}
-                  />
-                </div>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
-                <div className="form-group">
-                  <label htmlFor="ticket-category">หมวดหมู่ (Category)</label>
-                  <select
-                    id="ticket-category"
-                    className="glass-input"
-                    value={category}
-                    onChange={(e) => setCategory(e.target.value)}
-                    disabled={formSubmitting}
-                    style={{ background: 'var(--glass-bg)', cursor: 'pointer' }}
-                  >
-                    {dbCategories.map(cat => (
-                      <option key={cat.id} value={cat.name}>{cat.name}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="form-group">
-                  <label htmlFor="ticket-module">ระบบงาน (Module)</label>
-                  <select
-                    id="ticket-module"
-                    className="glass-input"
-                    value={module}
-                    onChange={(e) => setModule(e.target.value)}
-                    disabled={formSubmitting}
-                    style={{ background: 'var(--glass-bg)', cursor: 'pointer' }}
-                  >
-                    {dbModules.map(mod => (
-                      <option key={mod.id} value={mod.name}>{mod.name}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="form-group">
-                  <label htmlFor="ticket-priority">ความเร่งด่วน (Priority)</label>
-                  <select
-                    id="ticket-priority"
-                    className="glass-input"
-                    value={priority}
-                    onChange={(e) => setPriority(e.target.value)}
-                    disabled={formSubmitting}
-                    style={{ background: 'var(--glass-bg)', cursor: 'pointer' }}
-                  >
-                    <option value="low">ต่ำ (Low)</option>
-                    <option value="medium">ปานกลาง (Medium)</option>
-                    <option value="high">สูง (High - เร่งด่วน)</option>
-                  </select>
-                </div>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
-                <div className="form-group">
-                  <label htmlFor="ticket-program-type">ประเภทโปรแกรม (Program Type)</label>
-                  <select
-                    id="ticket-program-type"
-                    className="glass-input"
-                    value={programType}
-                    onChange={(e) => setProgramType(e.target.value)}
-                    disabled={formSubmitting || dbProgramTypes.length === 0}
-                    style={{ background: 'var(--glass-bg)', cursor: 'pointer' }}
-                    required
-                  >
-                    {dbProgramTypes.length === 0 && <option value="">กำลังโหลด...</option>}
-                    {dbProgramTypes.map(pt => (
-                      <option key={pt.id} value={pt.name}>{pt.name}</option>
-                    ))}
-                  </select>
-                </div>
-                <div className="form-group">
-                  <label htmlFor="ticket-issue-type">ประเภทปัญหา (Issue Type)</label>
-                  <select
-                    id="ticket-issue-type"
-                    className="glass-input"
-                    value={issueType}
-                    onChange={(e) => setIssueType(e.target.value)}
-                    disabled={formSubmitting || dbIssueTypes.length === 0}
-                    style={{ background: 'var(--glass-bg)', cursor: 'pointer' }}
-                    required
-                  >
-                    {dbIssueTypes.length === 0 && <option value="">กำลังโหลด...</option>}
-                    {dbIssueTypes.map(it => (
-                      <option key={it.id} value={it.name}>{it.name}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="ticket-desc">รายละเอียดปัญหาอย่างละเอียด (Description)</label>
-                <textarea
-                  id="ticket-desc"
-                  className="glass-input"
-                  rows="5"
-                  placeholder="กรุณาเขียนรายละเอียดของปัญหา ขั้นตอนการเกิดปัญหาอย่างครบถ้วน เพื่อให้เจ้าหน้าที่วิเคราะห์ได้อย่างรวดเร็ว"
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  disabled={formSubmitting}
-                  required
-                  style={{ resize: 'vertical' }}
-                ></textarea>
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="ticket-files">ไฟล์และรูปภาพแนบประกอบเคส (รองรับ: ภาพ, PDF, Word, Excel, ZIP ฯลฯ ขนาดแต่ละไฟล์ไม่เกิน 20MB)</label>
-                <input
-                  type="file"
-                  id="ticket-files"
-                  className="glass-input"
-                  accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.zip,.rar"
-                  multiple={true}
-                  onChange={(e) => {
-                    const files = Array.from(e.target.files);
-                    const invalidFiles = files.filter(f => f.size > 20 * 1024 * 1024);
-                    if (invalidFiles.length > 0) {
-                      setFormError('ขนาดบางไฟล์เกิน 20MB (ไฟล์ที่มีปัญหาจะไม่ถูกเลือก)');
-                    }
-                    const validFiles = files.filter(f => f.size <= 20 * 1024 * 1024);
-                    setFormError('');
-                    setAttachmentFiles(prev => [...prev, ...validFiles]);
-                    e.target.value = null;
-                  }}
-                  disabled={formSubmitting}
-                />
-
-                {/* List of currently selected files with delete button */}
-                {attachmentFiles.length > 0 && (
-                  <div style={{ marginTop: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                    <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#475569' }}>📸 รูปภาพที่เลือกแนบ ({attachmentFiles.length} รูป):</span>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-                      {attachmentFiles.map((file, idx) => (
-                        <div key={idx} style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '0.5rem',
-                          background: 'rgba(99, 102, 241, 0.08)',
-                          border: '1px solid rgba(99, 102, 241, 0.2)',
-                          padding: '0.25rem 0.75rem',
-                          borderRadius: '8px',
-                          fontSize: '0.8rem',
-                          color: '#1e1b4b'
-                        }}>
-                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '120px' }}>{file.name}</span>
-                          <button
-                            type="button"
-                            onClick={() => setAttachmentFiles(prev => prev.filter((_, i) => i !== idx))}
-                            style={{
-                              border: 'none',
-                              background: 'none',
-                              color: 'var(--accent-purple)',
-                              cursor: 'pointer',
-                              padding: 0,
-                              fontWeight: 'bold',
-                              fontSize: '0.85rem'
-                            }}
-                            title="ยกเลิกรูปนี้"
-                          >
-                            ❌
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', marginTop: '1.5rem' }}>
-                <button type="button" className="btn btn-secondary" onClick={() => setIsModalOpen(false)} disabled={formSubmitting}>
-                  ยกเลิก
-                </button>
-                <button type="submit" className="btn btn-primary" disabled={formSubmitting}>
-                  {formSubmitting ? 'กำลังส่งตั๋วเข้าระบบ...' : 'ยืนยันการส่งตั๋ว'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
+        {isModalOpen && (
+        <CreateTicketModal 
+          onClose={() => setIsModalOpen(false)}
+          onSuccess={() => {
+            setIsModalOpen(false);
+            fetchTickets();
+          }}
+        />
       )}
     </div>
   );

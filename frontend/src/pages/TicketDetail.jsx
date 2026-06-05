@@ -348,7 +348,7 @@ export default function TicketDetail({ ticketId, onBack }) {
                 {ticket.status === 'open' ? '• รอยืนยัน' :
                  ticket.status === 'assigned' ? '• กำลังดูแล' : '• เสร็จสิ้น'}
               </span>
-              <span className="badge badge-category">{ticket.category}</span>
+
               <span className="badge badge-module">🧩 {ticket.module}</span>
               <span className="badge" style={{ background: 'rgba(236, 72, 153, 0.1)', color: '#ec4899', border: '1px solid rgba(236, 72, 153, 0.2)' }}>
                 💻 {ticket.program_type || 'Standard'}
@@ -362,7 +362,17 @@ export default function TicketDetail({ ticketId, onBack }) {
               </span>
             </div>
 
-            <h2 style={{ fontSize: '1.8rem', color: '#0f172a', marginBottom: '1rem' }}>{ticket.title}</h2>
+            <div style={{ fontSize: '1rem', color: '#64748b', marginBottom: '0.25rem', fontFamily: 'monospace' }}>
+              LogId: {ticket.ticket_number || '#' + String(ticket.id).padStart(3, '0')}
+            </div>
+            <h2 style={{ fontSize: '1.8rem', color: '#0f172a', marginBottom: '0.5rem' }}>
+              {ticket.title}
+            </h2>
+            {ticket.user_cust_num && (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1.5rem', fontSize: '0.9rem', color: '#475569', marginBottom: '1rem', padding: '0.5rem 0', borderBottom: '1px solid var(--glass-border)' }}>
+                <div><strong>Customer :</strong> <span style={{ color: '#0ea5e9', fontSize: '90%' }}>{ticket.actual_customer_name || '-'}</span></div>
+              </div>
+            )}
             <div style={{ background: 'rgba(0, 75, 181, 0.03)', border: '1px solid rgba(0, 75, 181, 0.08)', padding: '1.25rem', borderRadius: '12px', color: '#1e293b', fontSize: '0.95rem', whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>
               {ticket.description}
             </div>
@@ -395,8 +405,8 @@ export default function TicketDetail({ ticketId, onBack }) {
               )}
 
               {ticket.attachments && ticket.attachments.length > 0 ? (
-                <div className="attachments-gallery">
-                  {ticket.attachments.map((att) => {
+                <div className="attachments-gallery" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '0.5rem' }}>
+                  {[...ticket.attachments].sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0)).map((att) => {
                     const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(att.file_url);
                     const imageAttachments = ticket.attachments.filter(item => /\.(jpg|jpeg|png|gif|webp)$/i.test(item.file_url));
                     const imgIndex = imageAttachments.findIndex(item => item.id === att.id);
@@ -405,6 +415,7 @@ export default function TicketDetail({ ticketId, onBack }) {
                       <div 
                         key={att.id} 
                         className="attachment-file-card"
+                        style={{ padding: '0.5rem', gap: '0.5rem' }}
                         onClick={(e) => {
                           if (isImage) {
                             e.preventDefault();
@@ -419,17 +430,18 @@ export default function TicketDetail({ ticketId, onBack }) {
                           <img 
                             src={`${API_URL.replace('/api', '')}${att.file_url}`} 
                             alt={att.file_name} 
-                            className="file-preview-thumbnail" 
+                            className="file-preview-thumbnail"
+                            style={{ width: '36px', height: '36px', fontSize: '1rem' }}
                           />
                         ) : (
-                          <div className="file-preview-thumbnail">
+                          <div className="file-preview-thumbnail" style={{ width: '36px', height: '36px', fontSize: '1rem' }}>
                             📄
                           </div>
                         )}
                         <div className="file-card-info">
-                          <span className="file-card-name" title={att.file_name}>{att.file_name}</span>
-                          <span className="file-card-action-txt">
-                            {isImage ? '👁️ คลิกเพื่อพรีวิว' : '📥 คลิกเพื่อดาวน์โหลด'}
+                          <span className="file-card-name" style={{ fontSize: '0.75rem' }} title={att.file_name}>{att.file_name}</span>
+                          <span style={{ fontSize: '0.65rem', color: '#94a3b8' }}>
+                            {att.created_at ? new Date(att.created_at).toLocaleString('th-TH') : '-'}
                           </span>
                         </div>
                         <button
@@ -643,7 +655,7 @@ export default function TicketDetail({ ticketId, onBack }) {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '0.5rem' }}>
                 {ticket.status === 'open' ? (
                   <button className="btn btn-primary" style={{ width: '100%' }} onClick={handleClaimTicket} disabled={updatingStatus}>
-                    📥 เคลมตั๋วรับเคสดูแล
+                    📥 เคลมเคสรับเคสดูแล
                   </button>
                 ) : (
                   <>
@@ -699,68 +711,52 @@ export default function TicketDetail({ ticketId, onBack }) {
 
             <div className="sidebar-section">
               <div className="detail-row">
-                <span className="detail-label">รหัสอ้างอิง:</span>
-                <span className="detail-val" style={{ fontFamily: 'monospace' }}>{ticket.ticket_number || '#' + String(ticket.id).padStart(3, '0')}</span>
-              </div>
-              <div className="detail-row">
-                <span className="detail-label">หมวดหมู่:</span>
-                <span className="detail-val" style={{ textTransform: 'capitalize' }}>{ticket.category}</span>
-              </div>
-              <div className="detail-row">
-                <span className="detail-label">ระบบงาน (Module):</span>
+                <span className="detail-label">Module:</span>
                 <span className="detail-val" style={{ color: 'var(--accent-cyan)' }}>{ticket.module}</span>
               </div>
               <div className="detail-row">
-                <span className="detail-label">ประเภทโปรแกรม:</span>
+                <span className="detail-label">ProgramType:</span>
                 <span className="detail-val" style={{ color: '#ec4899' }}>{ticket.program_type || 'Standard'}</span>
               </div>
               <div className="detail-row">
-                <span className="detail-label">ประเภทปัญหา:</span>
+                <span className="detail-label">IssueType:</span>
                 <span className="detail-val" style={{ color: '#d97706' }}>{ticket.issue_type || 'Technical'}</span>
               </div>
               <div className="detail-row">
-                <span className="detail-label">หน้าจอ (Form Name):</span>
+                <span className="detail-label">FormName:</span>
                 <span className="detail-val">{ticket.form_name || '-'}</span>
               </div>
               <div className="detail-row">
-                <span className="detail-label">ความเร่งด่วน:</span>
+                <span className="detail-label">Priority:</span>
                 <span className="detail-val" style={{ color: ticket.priority === 'high' ? 'var(--priority-high)' : 'inherit' }}>
                   {ticket.priority === 'low' ? 'ต่ำ (Low)' : ticket.priority === 'medium' ? 'ปานกลาง (Medium)' : 'สูง (High)'}
                 </span>
               </div>
               <div className="detail-row">
-                <span className="detail-label">ผู้เปิดเคส:</span>
+                <span className="detail-label">RequestBy:</span>
                 <span className="detail-val">{ticket.user_name}</span>
               </div>
               <div className="detail-row">
-                <span className="detail-label">อีเมลผู้ส่ง:</span>
+                <span className="detail-label">RequestByEmail:</span>
                 <span className="detail-val" style={{ fontSize: '0.8rem' }}>{ticket.customer_email}</span>
               </div>
+
+
               <div className="detail-row">
-                <span className="detail-label">อีเมลเพิ่มเติม (CC):</span>
-                <span className="detail-val" style={{ fontSize: '0.8rem' }}>{ticket.additional_email || '-'}</span>
-              </div>
-              {ticket.user_cust_num && (
-                <div className="detail-row">
-                  <span className="detail-label">รหัสลูกค้า:</span>
-                  <span className="detail-val" style={{ fontWeight: 600 }}>{ticket.user_cust_num}</span>
-                </div>
-              )}
-              <div className="detail-row">
-                <span className="detail-label">ผู้รับผิดชอบ:</span>
+                <span className="detail-label">AssignedTo:</span>
                 <span className="detail-val" style={{ color: 'var(--accent-purple)' }}>{ticket.agent_name || 'ยังไม่มีเจ้าหน้าที่รับเคส'}</span>
               </div>
               <div className="detail-row" style={{ fontSize: '0.8rem', color: ticket.assigned_at ? 'var(--accent-purple)' : '#64748b' }}>
-                <span className="detail-label">รับเคสเมื่อ:</span>
+                <span className="detail-label">AssignedDate:</span>
                 <span className="detail-val">{ticket.assigned_at ? new Date(ticket.assigned_at).toLocaleString('th-TH') : '-'}</span>
               </div>
               <hr style={{ border: 'none', borderBottom: '1px solid var(--glass-border)' }} />
               <div className="detail-row" style={{ fontSize: '0.8rem' }}>
-                <span className="detail-label">วันที่เปิดเคส:</span>
+                <span className="detail-label">RequestDate:</span>
                 <span className="detail-val">{new Date(ticket.created_at).toLocaleString('th-TH')}</span>
               </div>
               <div className="detail-row" style={{ fontSize: '0.8rem' }}>
-                <span className="detail-label">อัปเดตล่าสุด:</span>
+                <span className="detail-label">UpdateDate:</span>
                 <span className="detail-val">{new Date(ticket.updated_at).toLocaleString('th-TH')}</span>
               </div>
               {ticket.resolved_at && (

@@ -22,7 +22,7 @@ export const authenticateToken = async (req, res, next) => {
     
     // Fetch fresh user role and base_role from DB to prevent stale JWT role issues
     const result = await pool.query(`
-      SELECT u.role as user_role, r.base_role 
+      SELECT u.role as user_role, r.base_role, u.cust_num 
       FROM users u 
       LEFT JOIN roles r ON LOWER(u.role) = LOWER(r.name) 
       WHERE u.id = $1
@@ -36,6 +36,7 @@ export const authenticateToken = async (req, res, next) => {
     req.user.user_role = result.rows[0].user_role; // The actual role name (e.g., 'Senior Support')
     // Fallback to user_role if base_role is not found (for backwards compatibility)
     req.user.role = result.rows[0].base_role || result.rows[0].user_role; 
+    req.user.cust_num = result.rows[0].cust_num;
     
     next();
   } catch (err) {

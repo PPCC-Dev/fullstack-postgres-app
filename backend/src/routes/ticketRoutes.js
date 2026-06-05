@@ -8,10 +8,7 @@ import {
   addMessage, 
   getTicketMessages,
   getAgentStats,
-  getCategories,
-  createCategory,
-  updateCategory,
-  deleteCategory,
+
   getModules,
   createModule,
   updateModule,
@@ -51,12 +48,6 @@ const router = express.Router();
 
 // All routes require authentication
 router.use(authenticateToken);
-
-// Dynamic Config Routes (must place before /:id routes to avoid clash)
-router.get('/config/categories', getCategories);
-router.post('/config/categories', requireAgent, createCategory);
-router.put('/config/categories/:name', requireAgent, updateCategory);
-router.delete('/config/categories/:name', requireAgent, deleteCategory);
 
 router.get('/config/error-types', getErrorTypes);
 router.post('/config/error-types', requireAgent, createErrorType);

@@ -6,6 +6,8 @@ import CustomerDashboard from './pages/CustomerDashboard';
 import AgentDashboard from './pages/AgentDashboard';
 import AdminDashboard from './pages/AdminDashboard';
 import TicketDetail from './pages/TicketDetail';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
 
 function ProfileModal({ isOpen, onClose }) {
   const { user, updateProfile, changePassword } = useAuth();
@@ -293,11 +295,16 @@ function ProfileModal({ isOpen, onClose }) {
 
 function MainAppContent() {
   const { user, loading, logout, token, API_URL } = useAuth();
-  const [authView, setAuthView] = useState('login'); // 'login' or 'register'
+  
+  // URL params parsing for password reset
+  const urlParams = new URLSearchParams(window.location.search);
+  const resetTokenParam = urlParams.get('resetToken');
+  const ticketIdParam = urlParams.get('ticketId');
+
+  const [authView, setAuthView] = useState(resetTokenParam ? 'reset-password' : 'login'); // 'login', 'register', 'forgot-password', 'reset-password'
+  
   const [selectedTicketId, setSelectedTicketId] = useState(() => {
-    const params = new URLSearchParams(window.location.search);
-    const id = params.get('ticketId');
-    return id ? parseInt(id, 10) : null;
+    return ticketIdParam ? parseInt(ticketIdParam, 10) : null;
   });
   
   const handleSetTicketId = (id) => {
@@ -404,8 +411,14 @@ function MainAppContent() {
     );
   }
 
-  // 2. Unauthenticated State (Show Login or Register)
+  // 2. Unauthenticated State (Show Login or Register or Forgot/Reset Password)
   if (!user) {
+    if (authView === 'forgot-password') {
+      return <ForgotPassword onToggleView={setAuthView} />;
+    }
+    if (authView === 'reset-password') {
+      return <ResetPassword onToggleView={setAuthView} token={resetTokenParam} />;
+    }
     return authView === 'login' ? (
       <Login onToggleView={setAuthView} onAuthSuccess={() => handleSetTicketId(null)} />
     ) : (

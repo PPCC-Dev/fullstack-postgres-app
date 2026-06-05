@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
+import CreateTicketModal from '../components/CreateTicketModal';
 
 export default function AdminDashboard({ onNavigateToTickets, onViewTicket }) {
   const { user, API_URL } = useAuth();
@@ -20,6 +21,7 @@ export default function AdminDashboard({ onNavigateToTickets, onViewTicket }) {
   const [itemsPerPage, setItemsPerPage] = useState(20);
   const [searchQuery, setSearchQuery] = useState('');
   const [priorityFilter, setPriorityFilter] = useState('all');
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   // Insights & Pivot States
   const [activeSubTab, setActiveSubTab] = useState('summary'); // 'summary' or 'insights'
@@ -120,7 +122,6 @@ export default function AdminDashboard({ onNavigateToTickets, onViewTicket }) {
       'Title',
       'Customer',
       'Priority',
-      'Category',
       'Module',
       'Status',
       'Created At',
@@ -133,7 +134,6 @@ export default function AdminDashboard({ onNavigateToTickets, onViewTicket }) {
       t.title.replace(/"/g, '""'),
       (t.user_name || t.customer_name) + ' (' + (t.actual_customer_name || t.customer_cust_num || '-') + ')',
       t.priority,
-      t.category,
       t.module,
       t.status === 'open' ? 'รอดำเนินการ' : t.status === 'assigned' ? 'กำลังแก้ไข' : 'ปิดเคสแล้ว',
       new Date(t.created_at).toLocaleString('th-TH'),
@@ -264,7 +264,6 @@ export default function AdminDashboard({ onNavigateToTickets, onViewTicket }) {
 
   const stats = {
     priority: { low: 0, medium: 0, high: 0 },
-    category: {},
     module: {},
     total: ticketsForAnalytics.length
   };
@@ -274,11 +273,6 @@ export default function AdminDashboard({ onNavigateToTickets, onViewTicket }) {
     if (ticket.priority === 'low') stats.priority.low++;
     else if (ticket.priority === 'medium') stats.priority.medium++;
     else if (ticket.priority === 'high') stats.priority.high++;
-
-    // Category
-    if (ticket.category) {
-      stats.category[ticket.category] = (stats.category[ticket.category] || 0) + 1;
-    }
 
     // Module
     if (ticket.module) {
@@ -392,9 +386,18 @@ export default function AdminDashboard({ onNavigateToTickets, onViewTicket }) {
   return (
     <div className="dashboard-container" style={{ padding: '2rem', maxWidth: '1200px', margin: '0 auto' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
-        <h1 style={{ margin: 0, background: 'linear-gradient(135deg, #a855f7, #00e5ff)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', fontWeight: 800 }}>
-          📊 Admin Insights & Analytics Portal
-        </h1>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <h1 style={{ margin: 0, background: 'linear-gradient(135deg, #a855f7, #00e5ff)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', fontWeight: 800 }}>
+            📊 Admin Insights & Analytics Portal
+          </h1>
+          <button 
+            className="btn btn-primary" 
+            onClick={() => setIsModalOpen(true)}
+            style={{ padding: '0.4rem 1rem', fontSize: '0.9rem', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '0.4rem', margin: 0 }}
+          >
+            ➕ สร้างเคสใหม่
+          </button>
+        </div>
         
         {activeSubTab === 'summary' && (
           <div style={{ display: 'flex', gap: '1rem' }}>
@@ -423,6 +426,16 @@ export default function AdminDashboard({ onNavigateToTickets, onViewTicket }) {
           </div>
         )}
       </div>
+
+      {isModalOpen && (
+        <CreateTicketModal 
+          onClose={() => setIsModalOpen(false)}
+          onSuccess={() => {
+            setIsModalOpen(false);
+            fetchReport();
+          }}
+        />
+      )}
 
       <div className="segment-control" style={{ marginBottom: '2rem', display: 'inline-flex', background: 'rgba(0,0,0,0.03)', border: '1px solid rgba(0,0,0,0.08)', padding: '0.25rem', borderRadius: '14px' }}>
         <button
@@ -499,7 +512,7 @@ export default function AdminDashboard({ onNavigateToTickets, onViewTicket }) {
                   <input
                     type="text"
                     className="glass-input"
-                    placeholder="🔍 ค้นหาด้วยคำสำคัญ (หัวข้อ, รายละเอียด, รหัสตั๋ว)..."
+                    placeholder="🔍 ค้นหาด้วยคำสำคัญ (หัวข้อ, รายละเอียด, รหัสเคส)..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     style={{ margin: 0 }}
@@ -544,9 +557,9 @@ export default function AdminDashboard({ onNavigateToTickets, onViewTicket }) {
             <div className="glass-card" style={{ padding: '2rem', textAlign: 'left', background: 'rgba(255, 255, 255, 0.8)', marginBottom: '2rem' }}>
               <div style={{ marginBottom: '1.5rem', borderBottom: '1px solid var(--glass-border)', paddingBottom: '1rem' }}>
                 <h3 style={{ fontSize: '1.3rem', marginBottom: '0.25rem', background: 'linear-gradient(135deg, var(--accent-cyan), var(--accent-purple))', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-                  📊 บทวิเคราะห์ข้อมูลและสัดส่วนตั๋วบริการ (Ticket Analytics)
+                  📊 บทวิเคราะห์ข้อมูลและสัดส่วนเคสบริการ (Ticket Analytics)
                 </h3>
-                <p style={{ fontSize: '0.85rem', color: '#64748b' }}>สรุปวิเคราะห์เปรียบเทียบสัดส่วนตั๋วบริการช่วยเหลือในรูปแบบกราฟวิเคราะห์ผล</p>
+                <p style={{ fontSize: '0.85rem', color: '#64748b' }}>สรุปวิเคราะห์เปรียบเทียบสัดส่วนเคสบริการช่วยเหลือในรูปแบบกราฟวิเคราะห์ผล</p>
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '2rem' }}>
@@ -586,75 +599,13 @@ export default function AdminDashboard({ onNavigateToTickets, onViewTicket }) {
                   </div>
                 </div>
 
-                {/* Category Donut Chart Section */}
-                <div className="chart-glass-card">
-                  <span className="chart-title">🏷️ สัดส่วนหมวดหมู่ยอดนิยม (Categories)</span>
-                  
-                  <div className="svg-donut-wrapper">
-                    <svg width="100%" height="100%" viewBox="0 0 100 100">
-                      <circle cx="50" cy="50" r="40" fill="transparent" stroke="rgba(0,0,0,0.03)" strokeWidth="10" />
-                      {(() => {
-                        const colors = ['#8b5cf6', '#0ea5e9', '#10b981', '#f59e0b'];
-                        const donutData = Object.keys(stats.category).map((cat, index) => {
-                          const count = stats.category[cat];
-                          const pct = stats.total === 0 ? 0 : (count / stats.total) * 100;
-                          return { label: cat, count, pct, color: colors[index % colors.length] };
-                        });
-                        
-                        let cumulativePercent = 0;
-                        return donutData.map((d) => {
-                          const strokeDasharray = 251.2;
-                          const strokeDashoffset = strokeDasharray - (strokeDasharray * d.pct) / 100;
-                          const rotationAngle = -90 + (cumulativePercent * 3.6);
-                          cumulativePercent += d.pct;
-                          return (
-                            <circle
-                              key={d.label}
-                              cx="50"
-                              cy="50"
-                              r="40"
-                              fill="transparent"
-                              stroke={d.color}
-                              strokeWidth="10"
-                              strokeDasharray={strokeDasharray}
-                              strokeDashoffset={strokeDashoffset}
-                              className="svg-donut-circle"
-                              style={{
-                                transform: `rotate(${rotationAngle}deg)`,
-                                transformOrigin: '50px 50px'
-                              }}
-                            />
-                          );
-                        });
-                      })()}
-                    </svg>
-                    <div className="donut-center-info">
-                      <span className="donut-center-number">{stats.total}</span>
-                      <span className="donut-center-label">เคสรวม</span>
-                    </div>
-                  </div>
-
-                  <div className="chart-legend">
-                    {Object.keys(stats.category).map((cat, index) => {
-                      const colors = ['#8b5cf6', '#0ea5e9', '#10b981', '#f59e0b'];
-                      const color = colors[index % colors.length];
-                      return (
-                        <div key={cat} className="legend-item">
-                          <span className="legend-color-dot" style={{ backgroundColor: color }}></span>
-                          <span>{cat} ({stats.category[cat]})</span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-
                 {/* Modules Bar Chart Section */}
                 <div className="chart-glass-card">
                   <span className="chart-title">🧩 โมดูลระบบงานยอดนิยม (Modules Frequency)</span>
                   
                   {Object.keys(stats.module).length === 0 ? (
                     <div style={{ flexGrow: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b', fontSize: '0.85rem' }}>
-                      ยังไม่มีข้อมูลโมดูลตั๋วในระบบ
+                      ยังไม่มีข้อมูลโมดูลเคสในระบบ
                     </div>
                   ) : (
                     <div style={{ width: '100%', flexGrow: 1, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>

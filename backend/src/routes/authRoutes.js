@@ -7,7 +7,9 @@ import {
   updateUser,
   deleteUser,
   updateProfile,
-  changePassword
+  changePassword,
+  forgotPassword,
+  resetPassword
 } from '../controllers/authController.js';
 import { authenticateToken, requireAgent } from '../middleware/authMiddleware.js';
 
@@ -17,6 +19,8 @@ const router = express.Router();
 // Public routes
 router.post('/register', register);
 router.post('/login', login);
+router.post('/forgot-password', forgotPassword);
+router.post('/reset-password', resetPassword);
 
 // Protected routes
 router.get('/profile', authenticateToken, getProfile);

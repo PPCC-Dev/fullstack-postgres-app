@@ -83,6 +83,12 @@ export default function Login({ onToggleView, onAuthSuccess }) {
             />
           </div>
 
+          <div style={{ display: 'flex', justifyContent: 'center', marginTop: '-0.25rem', marginBottom: '0.5rem' }}>
+            <a href="#" className="auth-link-mockup" onClick={(e) => { e.preventDefault(); onToggleView('forgot-password'); }} style={{ fontSize: '0.85rem' }}>
+              ลืมรหัสผ่าน? (Forgot Password?)
+            </a>
+          </div>
+
           {/* Centered Sign-in Button */}
           <button type="submit" className="btn-signin-pill" disabled={loading}>
             {loading ? 'Signing in...' : 'Sign in'}

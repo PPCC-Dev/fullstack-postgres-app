@@ -5,6 +5,7 @@ import ProgramTypeManagement from '../components/config/ProgramTypeManagement';
 import IssueTypeManagement from '../components/config/IssueTypeManagement';
 import ModuleProgramManagement from '../components/config/ModuleProgramManagement';
 import SupportStatManagement from '../components/config/SupportStatManagement';
+import CreateTicketModal from '../components/CreateTicketModal';
 
 export default function AgentDashboard({ onViewTicket, initialTab = 'queue' }) {
   const { user, token, API_URL } = useAuth();
@@ -12,7 +13,6 @@ export default function AgentDashboard({ onViewTicket, initialTab = 'queue' }) {
   const [stats, setStats] = useState({
     status: { open: 0, assigned: 0, resolved: 0 },
     priority: { low: 0, medium: 0, high: 0 },
-    category: {},
     module: {},
     total: 0
   });
@@ -24,6 +24,7 @@ export default function AgentDashboard({ onViewTicket, initialTab = 'queue' }) {
   const [customerFilter, setCustomerFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all'); // Add status filter for 'all' tab
   const [claimLoadingId, setClaimLoadingId] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -40,7 +41,6 @@ export default function AgentDashboard({ onViewTicket, initialTab = 'queue' }) {
   const [editingMemberData, setEditingMemberData] = useState({ role: '', custNum: '' });
 
   // Configuration management state
-  const [configCategories, setConfigCategories] = useState([]);
   const [configModules, setConfigModules] = useState([]);
   const [configCustomers, setConfigCustomers] = useState([]);
   const [configErrorTypes, setConfigErrorTypes] = useState([]);
@@ -52,10 +52,6 @@ export default function AgentDashboard({ onViewTicket, initialTab = 'queue' }) {
   const [editingErrRemark, setEditingErrRemark] = useState('');
     const [configRoles, setConfigRoles] = useState([]);
   const [configLoading, setConfigLoading] = useState(false);
-  
-  const [newCatName, setNewCatName] = useState('');
-  const [editingCategoryName, setEditingCategoryName] = useState(null);
-  const [editingCategoryNewName, setEditingCategoryNewName] = useState('');
 
   const [newModName, setNewModName] = useState('');
   const [newModDesc, setNewModDesc] = useState('');
@@ -68,8 +64,6 @@ export default function AgentDashboard({ onViewTicket, initialTab = 'queue' }) {
   const [membersLimit, setMembersLimit] = useState(10);
   const [errortypesPage, setErrortypesPage] = useState(1);
   const [errortypesLimit, setErrortypesLimit] = useState(10);
-  const [categoriesPage, setCategoriesPage] = useState(1);
-  const [categoriesLimit, setCategoriesLimit] = useState(10);
   const [rolesPage, setRolesPage] = useState(1);
   const [rolesLimit, setRolesLimit] = useState(10);
             
@@ -89,11 +83,6 @@ export default function AgentDashboard({ onViewTicket, initialTab = 'queue' }) {
   const fetchConfigData = async () => {
     try {
       setConfigError('');
-      const catRes = await fetch(`${API_URL}/tickets/config/categories`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const catData = await catRes.json();
-      if (catRes.ok) setConfigCategories(catData);
 
       const modRes = await fetch(`${API_URL}/tickets/config/modules`, {
         headers: { 'Authorization': `Bearer ${token}` }
@@ -258,94 +247,6 @@ export default function AgentDashboard({ onViewTicket, initialTab = 'queue' }) {
       if (!response.ok) throw new Error(data.error || 'Failed to delete error type');
       
       setConfigSuccess(`ลบประเภทข้อผิดพลาด "${id}" สำเร็จ`);
-      await fetchConfigData();
-    } catch (err) {
-      console.error(err);
-      setConfigError(err.message);
-    } finally {
-      setConfigLoading(false);
-    }
-  };
-  const handleAddCategory = async (e) => {
-    e.preventDefault();
-    if (!newCatName.trim()) return;
-    setConfigError('');
-    setConfigSuccess('');
-    setConfigLoading(true);
-
-    try {
-      const response = await fetch(`${API_URL}/tickets/config/categories`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ name: newCatName.trim() })
-      });
-
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'Failed to add category');
-
-      setNewCatName('');
-      setConfigSuccess(`เพิ่มหมวดหมู่ช่วยเหลือ "${data.name}" เรียบร้อยแล้ว`);
-      await fetchConfigData();
-    } catch (err) {
-      console.error(err);
-      setConfigError(err.message);
-    } finally {
-      setConfigLoading(false);
-    }
-  };
-
-  const handleUpdateCategory = async (name) => {
-    if (!editingCategoryNewName.trim()) return;
-    setConfigError('');
-    setConfigSuccess('');
-    setConfigLoading(true);
-
-    try {
-      const response = await fetch(`${API_URL}/tickets/config/categories/${name}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ newName: editingCategoryNewName.trim() })
-      });
-
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'Failed to update category');
-
-      setConfigSuccess(`อัปเดตหมวดหมู่ช่วยเหลือ สำเร็จ`);
-      setEditingCategoryName(null);
-      setEditingCategoryNewName('');
-      await fetchConfigData();
-    } catch (err) {
-      console.error(err);
-      setConfigError(err.message);
-    } finally {
-      setConfigLoading(false);
-    }
-  };
-
-  const handleDeleteCategory = async (name) => {
-    if (!window.confirm(`คุณแน่ใจหรือไม่ที่จะลบหมวดหมู่ช่วยเหลือ "${name}"?`)) return;
-    setConfigError('');
-    setConfigSuccess('');
-    setConfigLoading(true);
-
-    try {
-      const response = await fetch(`${API_URL}/tickets/config/categories/${name}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'Failed to delete category');
-
-      setConfigSuccess(`ลบหมวดหมู่ช่วยเหลือ "${name}" สำเร็จ`);
       await fetchConfigData();
     } catch (err) {
       console.error(err);
@@ -637,7 +538,7 @@ export default function AgentDashboard({ onViewTicket, initialTab = 'queue' }) {
   };
 
   const handleDeleteMember = async (memberId) => {
-    if (!confirm('คุณแน่ใจหรือไม่ว่าต้องการลบสมาชิกคนนี้? การลบจะทำให้ตั๋วและข้อความแชทประสานงานของสมาชิกคนนี้ทั้งหมดถูกลบออกจากระบบอย่างถาวร!')) {
+    if (!confirm('คุณแน่ใจหรือไม่ว่าต้องการลบสมาชิกคนนี้? การลบจะทำให้เคสและข้อความแชทประสานงานของสมาชิกคนนี้ทั้งหมดถูกลบออกจากระบบอย่างถาวร!')) {
       return;
     }
     try {
@@ -717,9 +618,15 @@ export default function AgentDashboard({ onViewTicket, initialTab = 'queue' }) {
 
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem', flexWrap: 'wrap', gap: '1rem' }}>
-        <div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
           <h1 className="page-title-gradient">ระบบควบคุมการบริการผู้ใช้</h1>
-          <p className="subtitle-text" style={{ marginBottom: 0 }}>ยินดีต้อนรับกลับมา, {user.display_role || 'Agent'} {user.name} | จัดการและดูแลสถิติปัญหาของลูกค้า</p>
+          <button 
+            className="btn btn-primary" 
+            onClick={() => setIsModalOpen(true)}
+            style={{ padding: '0.4rem 1rem', fontSize: '0.9rem', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '0.4rem', margin: 0 }}
+          >
+            ➕ สร้างเคสใหม่
+          </button>
         </div>
         <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
           {activeTab !== 'config' && (
@@ -740,6 +647,16 @@ export default function AgentDashboard({ onViewTicket, initialTab = 'queue' }) {
           </button>
         </div>
       </div>
+
+      {isModalOpen && (
+        <CreateTicketModal 
+          onClose={() => setIsModalOpen(false)}
+          onSuccess={() => {
+            setIsModalOpen(false);
+            fetchData();
+          }}
+        />
+      )}
 
       {/* Stats display */}
       {activeTab !== 'config' && (
@@ -848,7 +765,7 @@ export default function AgentDashboard({ onViewTicket, initialTab = 'queue' }) {
                   <div className="glass-card empty-state">
                     <span className="empty-icon">🥳</span>
                     <h3>ยอดเยี่ยม! คิวว่างเปล่า</h3>
-                    <p>ไม่มีตั๋วคงเหลือรอกดเคลมในระบบขณะนี้ คุณสามารถรอหรือตรวจสอบเคสที่รับผิดชอบอยู่</p>
+                    <p>ไม่มีเคสคงเหลือรอกดเคลมในระบบขณะนี้ คุณสามารถรอหรือตรวจสอบเคสที่รับผิดชอบอยู่</p>
                   </div>
                 ) : (
                   <>
@@ -858,7 +775,7 @@ export default function AgentDashboard({ onViewTicket, initialTab = 'queue' }) {
                           <div className="ticket-header">
                             <span className="ticket-id">{ticket.ticket_number || '#' + String(ticket.id).padStart(3, '0')}</span>
                             <span className="badge badge-status-open">• รอยืนยัน</span>
-                            <span className="badge badge-category">{ticket.category}</span>
+                            
                             <span className="badge badge-module">🧩 {ticket.module}</span>
                             <span className="badge" style={{ background: 'rgba(236, 72, 153, 0.1)', color: '#ec4899', border: '1px solid rgba(236, 72, 153, 0.2)' }}>
                               💻 {ticket.program_type || 'Standard'}
@@ -880,7 +797,7 @@ export default function AgentDashboard({ onViewTicket, initialTab = 'queue' }) {
                               👤 ลูกค้า: {ticket.user_name || ticket.customer_name} ({ticket.actual_customer_name || ticket.user_cust_num || ticket.customer_cust_num || '-'})
                               
                             </span>
-                            <span className="meta-item">🗓️ ส่งตั๋วเมื่อ: {new Date(ticket.created_at).toLocaleString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
+                            <span className="meta-item">🗓️ ส่งเคสเมื่อ: {new Date(ticket.created_at).toLocaleString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
                           </div>
                         </div>
                         <div className="ticket-actions">
@@ -904,7 +821,7 @@ export default function AgentDashboard({ onViewTicket, initialTab = 'queue' }) {
                   <div className="glass-card empty-state">
                     <span className="empty-icon">🛋️</span>
                     <h3>คุณไม่มีเคสที่ค้างคาอยู่</h3>
-                    <p>คุณยังไม่ได้กดเคลมตั๋วในระบบเลย หรือทุกเคสที่รับดูแลได้แก้ไขเสร็จสิ้นไปแล้ว</p>
+                    <p>คุณยังไม่ได้กดเคลมเคสในระบบเลย หรือทุกเคสที่รับดูแลได้แก้ไขเสร็จสิ้นไปแล้ว</p>
                     <button className="btn btn-secondary" onClick={() => setActiveTab('queue')} style={{ marginTop: '0.5rem' }}>
                       ไปที่หน้าเคสที่ยังไม่ได้ถูกรับ
                     </button>
@@ -917,7 +834,7 @@ export default function AgentDashboard({ onViewTicket, initialTab = 'queue' }) {
                           <div className="ticket-header">
                             <span className="ticket-id">{ticket.ticket_number || '#' + String(ticket.id).padStart(3, '0')}</span>
                             <span className="badge badge-status-assigned">• กำลังดูแล</span>
-                            <span className="badge badge-category">{ticket.category}</span>
+                            
                             <span className="badge badge-module">🧩 {ticket.module}</span>
                             <span className={`badge badge-priority-${ticket.priority}`}>
                               {ticket.priority === 'low' ? 'ต่ำ' :
@@ -977,7 +894,7 @@ export default function AgentDashboard({ onViewTicket, initialTab = 'queue' }) {
                               {ticket.status === 'open' ? '• รอยืนยัน' :
                                ticket.status === 'assigned' ? '• กำลังดูแล' : '• เสร็จสิ้น'}
                             </span>
-                            <span className="badge badge-category">{ticket.category}</span>
+                            
                             <span className="badge badge-module">🧩 {ticket.module}</span>
                             <span className={`badge badge-priority-${ticket.priority}`}>
                               {ticket.priority === 'low' ? 'ต่ำ' :
@@ -1313,13 +1230,7 @@ export default function AgentDashboard({ onViewTicket, initialTab = 'queue' }) {
                     >
                       👥 จัดการสมาชิก ({members.length})
                     </button>
-                    <button
-                      onClick={() => setConfigSubTab('categories')}
-                      className={`btn ${configSubTab === 'categories' ? 'btn-primary' : 'btn-secondary'}`}
-                      style={{ padding: '0.5rem 1rem', borderRadius: '10px', fontSize: '0.9rem', justifyContent: 'flex-start' }}
-                    >
-                      🏷️ หมวดหมู่ช่วยเหลือ
-                    </button>
+
                     <button
                       onClick={() => setConfigSubTab('errortypes')}
                       className={`btn ${configSubTab === 'errortypes' ? 'btn-primary' : 'btn-secondary'}`}
@@ -1782,159 +1693,6 @@ export default function AgentDashboard({ onViewTicket, initialTab = 'queue' }) {
                     );
                   })()}
 
-                  {configSubTab === 'categories' && (() => {
-                    const totalItems = configCategories.length;
-                    const totalPages = Math.ceil(totalItems / categoriesLimit);
-                    const indexOfLastItem = categoriesPage * categoriesLimit;
-                    const indexOfFirstItem = indexOfLastItem - categoriesLimit;
-                    const currentCategories = configCategories.slice(indexOfFirstItem, indexOfLastItem);
-
-                    return (
-                      <div className="glass-card" style={{ padding: '2rem', textAlign: 'left' }}>
-                        <h3 style={{ fontSize: '1.25rem', marginBottom: '1.25rem', color: '#0f172a', borderBottom: '1px solid var(--glass-border)', paddingBottom: '0.75rem' }}>
-                          🏷️ จัดการหมวดหมู่ช่วยเหลือ (Categories)
-                        </h3>
-
-                        <form onSubmit={handleAddCategory} style={{ display: 'flex', gap: '0.75rem', marginBottom: '1.5rem' }}>
-                          <input
-                            type="text"
-                            className="glass-input"
-                            placeholder="ชื่อหมวดหมู่ช่วยเหลือ เช่น Hardware"
-                            value={newCatName}
-                            onChange={(e) => setNewCatName(e.target.value)}
-                            disabled={configLoading}
-                            required
-                            style={{ margin: 0, flex: 1 }}
-                          />
-                          <button type="submit" className="btn btn-primary" disabled={configLoading || !newCatName.trim()} style={{ padding: '0.75rem 2rem', whiteSpace: 'nowrap' }}>
-                            ➕ เพิ่มหมวดหมู่
-                          </button>
-                        </form>
-
-                        {/* Pagination Controls Top */}
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', fontSize: '0.9rem' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                            <span>แสดง</span>
-                            <select 
-                              value={categoriesLimit} 
-                              onChange={(e) => { setCategoriesLimit(Number(e.target.value)); setCategoriesPage(1); }}
-                              className="glass-input"
-                              style={{ margin: 0, padding: '0.25rem 0.5rem', minWidth: '60px' }}
-                            >
-                              <option value={10}>10</option>
-                              <option value={20}>20</option>
-                              <option value={40}>40</option>
-                              <option value={80}>80</option>
-                              <option value={100}>100</option>
-                            </select>
-                            <span>รายการ/หน้า</span>
-                          </div>
-                          <div style={{ color: '#64748b' }}>
-                            รวม {totalItems} รายการ (หน้า {categoriesPage}/{totalPages || 1})
-                          </div>
-                        </div>
-
-                        <div style={{ overflowX: 'auto' }}>
-                          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.95rem', color: '#0f172a' }}>
-                            <thead>
-                              <tr style={{ borderBottom: '2.5px solid var(--glass-border)', color: '#475569', fontWeight: 600, fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.04em', background: 'rgba(0, 0, 0, 0.015)' }}>
-                                <th style={{ padding: '1rem 0.75rem', textAlign: 'left' }}>Category Name</th>
-                                <th style={{ padding: '1rem 0.75rem', textAlign: 'center', width: '120px' }}>Action</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {configCategories.length === 0 ? (
-                                <tr>
-                                  <td colSpan="2" style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>ยังไม่มีข้อมูลหมวดหมู่</td>
-                                </tr>
-                              ) : (
-                                currentCategories.map(cat => (
-                                  <tr key={cat.id} style={{ borderBottom: '1px solid var(--glass-border)', transition: 'background-color 0.2s' }}
-                                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(0, 75, 181, 0.02)'}
-                                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}>
-                                    <td style={{ padding: '1rem 0.75rem', fontWeight: 600 }}>
-                                      {editingCategoryName === cat.name ? (
-                                        <input
-                                          type="text"
-                                          className="glass-input"
-                                          value={editingCategoryNewName}
-                                          onChange={(e) => setEditingCategoryNewName(e.target.value)}
-                                          style={{ margin: 0, padding: '0.25rem 0.5rem', fontSize: '0.95rem', width: '100%' }}
-                                        />
-                                      ) : (
-                                        cat.name
-                                      )}
-                                    </td>
-                                    <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }}>
-                                      {editingCategoryName === cat.name ? (
-                                        <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
-                                          <button className="btn btn-primary" onClick={() => handleUpdateCategory(cat.name)} style={{ padding: '0.35rem 0.75rem', fontSize: '0.8rem', borderRadius: '8px', whiteSpace: 'nowrap' }}>
-                                            💾 บันทึก
-                                          </button>
-                                          <button className="btn btn-secondary" onClick={() => { setEditingCategoryName(null); setEditingCategoryNewName(''); }} style={{ padding: '0.35rem 0.75rem', fontSize: '0.8rem', borderRadius: '8px', whiteSpace: 'nowrap' }}>
-                                            ❌ ยกเลิก
-                                          </button>
-                                        </div>
-                                      ) : (
-                                        <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
-                                          <button
-                                            className="btn btn-secondary"
-                                            style={{ padding: '0.35rem 0.75rem', fontSize: '0.8rem', borderRadius: '8px', whiteSpace: 'nowrap' }}
-                                            onClick={() => {
-                                              setEditingCategoryName(cat.name);
-                                              setEditingCategoryNewName(cat.name);
-                                            }}
-                                            disabled={configLoading}
-                                          >
-                                            ✏️ แก้ไข
-                                          </button>
-                                          <button
-                                            className="btn btn-danger"
-                                            style={{ padding: '0.35rem 0.75rem', fontSize: '0.8rem', borderRadius: '8px', whiteSpace: 'nowrap' }}
-                                            onClick={() => handleDeleteCategory(cat.name)}
-                                            disabled={configLoading || configCategories.length <= 1}
-                                          >
-                                            🗑️ ลบ
-                                          </button>
-                                        </div>
-                                      )}
-                                    </td>
-                                  </tr>
-                                ))
-                              )}
-                            </tbody>
-                          </table>
-                        </div>
-
-                        {/* Pagination Controls Bottom */}
-                        {totalPages > 1 && (
-                          <div style={{ display: 'flex', justifyContent: 'center', gap: '0.5rem', marginTop: '1rem' }}>
-                            <button 
-                              className="btn btn-secondary" 
-                              disabled={categoriesPage === 1}
-                              onClick={() => setCategoriesPage(categoriesPage - 1)}
-                              style={{ padding: '0.5rem 1rem' }}
-                            >
-                              &laquo; ก่อนหน้า
-                            </button>
-                            
-                            <div style={{ display: 'flex', alignItems: 'center', padding: '0 1rem', fontWeight: 600 }}>
-                              {categoriesPage} / {totalPages}
-                            </div>
-
-                            <button 
-                              className="btn btn-secondary" 
-                              disabled={categoriesPage >= totalPages}
-                              onClick={() => setCategoriesPage(categoriesPage + 1)}
-                              style={{ padding: '0.5rem 1rem' }}
-                            >
-                              ถัดไป &raquo;
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })()}
 
                   {configSubTab === 'modules' && (() => {
                     const totalModules = configModules.length;

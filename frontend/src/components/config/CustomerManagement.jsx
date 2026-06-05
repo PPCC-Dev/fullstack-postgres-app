@@ -13,6 +13,7 @@ const CustomerManagement = () => {
   // Add form state
   const [newCustNum, setNewCustNum] = useState('');
   const [newCustName, setNewCustName] = useState('');
+  const [newPrefix, setNewPrefix] = useState('');
   const [newContactEmail, setNewContactEmail] = useState('');
   const [newVersion, setNewVersion] = useState('');
   const [newLicense, setNewLicense] = useState('');
@@ -26,6 +27,7 @@ const CustomerManagement = () => {
   const [editingId, setEditingId] = useState(null);
   const [editingCustNum, setEditingCustNum] = useState('');
   const [editingCustName, setEditingCustName] = useState('');
+  const [editingPrefix, setEditingPrefix] = useState('');
   const [editingContactEmail, setEditingContactEmail] = useState('');
   const [editingVersion, setEditingVersion] = useState('');
   const [editingLicense, setEditingLicense] = useState('');
@@ -63,6 +65,7 @@ const CustomerManagement = () => {
   const resetNewForm = () => {
     setNewCustNum('');
     setNewCustName('');
+    setNewPrefix('');
     setNewContactEmail('');
     setNewVersion('');
     setNewLicense('');
@@ -86,6 +89,7 @@ const CustomerManagement = () => {
         body: JSON.stringify({
           cust_num: newCustNum,
           cust_name: newCustName,
+          prefix: newPrefix,
           contact_email: newContactEmail,
           version: newVersion,
           license: newLicense,
@@ -122,6 +126,7 @@ const CustomerManagement = () => {
         body: JSON.stringify({
           cust_num: editingCustNum,
           cust_name: editingCustName,
+          prefix: editingPrefix,
           contact_email: editingContactEmail,
           version: editingVersion,
           license: editingLicense,
@@ -142,6 +147,7 @@ const CustomerManagement = () => {
       setEditingId(null);
       setEditingCustNum('');
       setEditingCustName('');
+      setEditingPrefix('');
       setEditingContactEmail('');
       setEditingVersion('');
       setEditingLicense('');
@@ -261,6 +267,18 @@ const CustomerManagement = () => {
                     value={newCustNum}
                     onChange={(e) => setNewCustNum(e.target.value)}
                     required
+                    style={{ margin: 0, width: '100%' }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: '#475569', marginBottom: '0.35rem' }}>Prefix (นำหน้า Ticket ID)</label>
+                  <input
+                    type="text"
+                    className="glass-input"
+                    placeholder="เช่น ABC"
+                    value={newPrefix}
+                    onChange={(e) => setNewPrefix(e.target.value)}
                     style={{ margin: 0, width: '100%' }}
                   />
                 </div>
@@ -419,6 +437,7 @@ const CustomerManagement = () => {
             <tr style={{ borderBottom: '2.5px solid var(--glass-border)', color: '#475569', fontWeight: 600, fontSize: '0.82rem', textTransform: 'uppercase', letterSpacing: '0.04em', background: 'rgba(0, 0, 0, 0.015)' }}>
               <th style={{ padding: '1rem 0.75rem', textAlign: 'left', whiteSpace: 'nowrap' }}>Customer Number</th>
               <th style={{ padding: '1rem 0.75rem', textAlign: 'left', whiteSpace: 'nowrap' }}>Customer Name</th>
+              <th style={{ padding: '1rem 0.75rem', textAlign: 'left', whiteSpace: 'nowrap' }}>Prefix</th>
               <th style={{ padding: '1rem 0.75rem', textAlign: 'left', whiteSpace: 'nowrap' }}>Contact Email</th>
               <th style={{ padding: '1rem 0.75rem', textAlign: 'left', whiteSpace: 'nowrap' }}>Version</th>
               <th style={{ padding: '1rem 0.75rem', textAlign: 'left', whiteSpace: 'nowrap' }}>License</th>
@@ -464,6 +483,19 @@ const CustomerManagement = () => {
                       />
                     ) : (
                       c.cust_name
+                    )}
+                  </td>
+                  <td style={{ padding: '1rem 0.75rem', color: '#475569' }}>
+                    {editingId === c.id ? (
+                      <input
+                        type="text"
+                        className="glass-input"
+                        value={editingPrefix}
+                        onChange={(e) => setEditingPrefix(e.target.value)}
+                        style={{ margin: 0, padding: '0.25rem 0.5rem', fontSize: '0.95rem', width: '80px' }}
+                      />
+                    ) : (
+                      c.prefix || '-'
                     )}
                   </td>
                   <td style={{ padding: '1rem 0.75rem', color: '#475569' }}>
@@ -581,6 +613,7 @@ const CustomerManagement = () => {
                           setEditingId(null);
                           setEditingCustNum('');
                           setEditingCustName('');
+                          setEditingPrefix('');
                           setEditingContactEmail('');
                           setEditingVersion('');
                           setEditingLicense('');
@@ -601,6 +634,7 @@ const CustomerManagement = () => {
                             setEditingId(c.id);
                             setEditingCustNum(c.cust_num);
                             setEditingCustName(c.cust_name);
+                            setEditingPrefix(c.prefix || '');
                             setEditingContactEmail(c.contact_email || '');
                             setEditingVersion(c.version || '');
                             setEditingLicense(c.license || '');

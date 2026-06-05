@@ -69,9 +69,18 @@ const initDatabaseSchema = async () => {
       ALTER TABLE users ALTER COLUMN is_verified SET DEFAULT FALSE;
     `);
 
-    // Add contract_email to customers if it does not exist
+    // Drop contract_email from customers if it exists, as it is no longer used
     await pool.query(`
-      ALTER TABLE customers ADD COLUMN IF NOT EXISTS contract_email VARCHAR(255);
+      ALTER TABLE customers DROP COLUMN IF EXISTS contract_email;
+    `);
+
+    // Add reset password columns to users
+    await pool.query(`
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_password_token VARCHAR(255);
+    `);
+    
+    await pool.query(`
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_password_expires TIMESTAMP;
     `);
     
     console.log('✅ Database schema checks completed successfully.');
