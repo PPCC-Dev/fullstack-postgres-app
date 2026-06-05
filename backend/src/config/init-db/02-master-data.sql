@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict chSB9DgbdGuZXCZEGq3nhvrgqdGtCTa9WftNVmaykIjuuOzcNxfeBphPSbUHp9C
+\restrict jYdfAVt8Un0DxL7eVWt0P5m4qseH24w38PnbdX1RvpBi8CuhAF9MQJRTODosuMg
 
 -- Dumped from database version 15.18 (Homebrew)
 -- Dumped by pg_dump version 15.18 (Homebrew)
@@ -433,6 +433,24 @@ INSERT INTO public.roles VALUES (3, 'Admin', 'admin');
 
 
 --
+-- Data for Name: support_stats; Type: TABLE DATA; Schema: public; Owner: tunited
+--
+
+INSERT INTO public.support_stats VALUES ('C', '999-Closed', '');
+INSERT INTO public.support_stats VALUES ('D', '030-Identify', 'assumption - Cust Bug - STD Bug / Under Design');
+INSERT INTO public.support_stats VALUES ('F', '120-Awaiting Infor', '');
+INSERT INTO public.support_stats VALUES ('I', '050-In-Process', 'Editing or Doing');
+INSERT INTO public.support_stats VALUES ('M', 'Monitor', '');
+INSERT INTO public.support_stats VALUES ('N', 'Not Accept', 'Not Accept');
+INSERT INTO public.support_stats VALUES ('O', '010-Open', '1st Level Support log into system');
+INSERT INTO public.support_stats VALUES ('Q', '060-Intemal PPCC QC', 'Testing on PPCC Server');
+INSERT INTO public.support_stats VALUES ('S', '040-Solution Finding', 'Find solution, Method how to solve');
+INSERT INTO public.support_stats VALUES ('T', '080-Test on CRP/UAT-QC', 'Testing on Customer Server (CRP / UAT)');
+INSERT INTO public.support_stats VALUES ('V', '020-Investigate', 'When DEV/Supp pull that log to investigate');
+INSERT INTO public.support_stats VALUES ('W', '100-Awaiting Customer', 'Waiting to Customer');
+
+
+--
 -- Data for Name: users; Type: TABLE DATA; Schema: public; Owner: tunited
 --
 
@@ -494,5 +512,5 @@ SELECT pg_catalog.setval('public.users_id_seq', 11, true);
 -- PostgreSQL database dump complete
 --
 
-\unrestrict chSB9DgbdGuZXCZEGq3nhvrgqdGtCTa9WftNVmaykIjuuOzcNxfeBphPSbUHp9C
+\unrestrict jYdfAVt8Un0DxL7eVWt0P5m4qseH24w38PnbdX1RvpBi8CuhAF9MQJRTODosuMg
 
