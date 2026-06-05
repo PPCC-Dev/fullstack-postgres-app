@@ -7,7 +7,7 @@ import ModuleProgramManagement from '../components/config/ModuleProgramManagemen
 import SupportStatManagement from '../components/config/SupportStatManagement';
 import CreateTicketModal from '../components/CreateTicketModal';
 
-export default function AgentDashboard({ onViewTicket, initialTab = 'queue' }) {
+export default function AgentDashboard({ onViewTicket, initialTab = 'queue', refreshKey }) {
   const { user, token, API_URL } = useAuth();
   const [tickets, setTickets] = useState([]);
   const [stats, setStats] = useState({
@@ -445,7 +445,7 @@ export default function AgentDashboard({ onViewTicket, initialTab = 'queue' }) {
       fetchData();
       fetchMembers();
     }
-  }, [token]);
+  }, [token, refreshKey]);
 
   useEffect(() => {
     if (activeTab === 'config' && configSubTab === 'members') {
@@ -618,16 +618,7 @@ export default function AgentDashboard({ onViewTicket, initialTab = 'queue' }) {
 
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem', flexWrap: 'wrap', gap: '1rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          <h1 className="page-title-gradient">ระบบควบคุมการบริการผู้ใช้</h1>
-          <button 
-            className="btn btn-primary" 
-            onClick={() => setIsModalOpen(true)}
-            style={{ padding: '0.4rem 1rem', fontSize: '0.9rem', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '0.4rem', margin: 0 }}
-          >
-            ➕ สร้างเคสใหม่
-          </button>
-        </div>
+        <h1 className="page-title-gradient">ระบบควบคุมการบริการผู้ใช้</h1>
         <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
           {activeTab !== 'config' && (
             <select 
@@ -647,16 +638,6 @@ export default function AgentDashboard({ onViewTicket, initialTab = 'queue' }) {
           </button>
         </div>
       </div>
-
-      {isModalOpen && (
-        <CreateTicketModal 
-          onClose={() => setIsModalOpen(false)}
-          onSuccess={() => {
-            setIsModalOpen(false);
-            fetchData();
-          }}
-        />
-      )}
 
       {/* Stats display */}
       {activeTab !== 'config' && (

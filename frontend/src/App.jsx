@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import CreateTicketModal from './components/CreateTicketModal';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import CustomerDashboard from './pages/CustomerDashboard';
@@ -324,6 +325,10 @@ function MainAppContent() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const bellRef = useRef(null);
+  
+  // Global Ticket Modal
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   const fetchNotifications = async () => {
     if (!token) return;
@@ -461,8 +466,16 @@ function MainAppContent() {
                  >
                    ⚙️ จัดการระบบ
                  </button>
-               </>
+                 </>
             )}
+
+            <button 
+              className="btn btn-primary" 
+              onClick={() => setIsModalOpen(true)}
+              style={{ padding: '0.4rem 1rem', fontSize: '0.85rem', marginRight: '0.5rem', background: 'linear-gradient(135deg, #10b981, #059669)', border: 'none', color: 'white', fontWeight: 'bold' }}
+            >
+              ➕ สร้างเคสใหม่
+            </button>
 
              {/* Notification Bell Center */}
              <div className="notification-bell-container" ref={bellRef} style={{ marginRight: '0.5rem' }}>
@@ -542,15 +555,26 @@ function MainAppContent() {
             onBack={() => handleSetTicketId(null)}
           />
         ) : user.role === 'admin' && adminView === 'dashboard' ? (
-          <AdminDashboard onNavigateToTickets={() => setAdminView('tickets')} onViewTicket={handleSetTicketId} />
+          <AdminDashboard onNavigateToTickets={() => setAdminView('tickets')} onViewTicket={handleSetTicketId} refreshKey={refreshKey} />
         ) : user.role === 'admin' && adminView === 'config' ? (
-          <AgentDashboard key="config" onViewTicket={handleSetTicketId} initialTab="config" />
+          <AgentDashboard key="config" onViewTicket={handleSetTicketId} initialTab="config" refreshKey={refreshKey} />
         ) : user.role === 'agent' || (user.role === 'admin' && adminView === 'tickets') ? (
-          <AgentDashboard key="dashboard" onViewTicket={handleSetTicketId} initialTab="queue" />
+          <AgentDashboard key="dashboard" onViewTicket={handleSetTicketId} initialTab="queue" refreshKey={refreshKey} />
         ) : (
-          <CustomerDashboard onViewTicket={handleSetTicketId} />
+          <CustomerDashboard onViewTicket={handleSetTicketId} refreshKey={refreshKey} />
         )}
       </main>
+
+      {/* Global Ticket Creation Modal */}
+      {isModalOpen && (
+        <CreateTicketModal 
+          onClose={() => setIsModalOpen(false)}
+          onSuccess={() => {
+            setIsModalOpen(false);
+            setRefreshKey(prev => prev + 1);
+          }}
+        />
+      )}
 
       {/* Footer */}
       <footer style={{ padding: '2rem 1rem', borderTop: '1px solid var(--glass-border)', textAlign: 'center', color: '#475569', fontSize: '0.85rem', marginTop: 'auto' }}>

@@ -2,7 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import CreateTicketModal from '../components/CreateTicketModal';
 
-export default function AdminDashboard({ onNavigateToTickets, onViewTicket }) {
+import CreateTicketModal from '../components/CreateTicketModal';
+
+export default function AdminDashboard({ onNavigateToTickets, onViewTicket, refreshKey }) {
   const { user, API_URL } = useAuth();
   const [filter, setFilter] = useState('all'); // 'daily', 'weekly', 'monthly', 'all'
   const [custNumFilter, setCustNumFilter] = useState('all');
@@ -21,7 +23,6 @@ export default function AdminDashboard({ onNavigateToTickets, onViewTicket }) {
   const [itemsPerPage, setItemsPerPage] = useState(20);
   const [searchQuery, setSearchQuery] = useState('');
   const [priorityFilter, setPriorityFilter] = useState('all');
-  const [isModalOpen, setIsModalOpen] = useState(false);
 
   // Insights & Pivot States
   const [activeSubTab, setActiveSubTab] = useState('summary'); // 'summary' or 'insights'
@@ -40,7 +41,7 @@ export default function AdminDashboard({ onNavigateToTickets, onViewTicket }) {
   useEffect(() => {
     fetchReport();
     setSelectedBlock(null); // Reset selection when filter changes
-  }, [filter, custNumFilter]);
+  }, [filter, custNumFilter, refreshKey]);
 
   const fetchCustomers = async () => {
     try {
@@ -386,18 +387,9 @@ export default function AdminDashboard({ onNavigateToTickets, onViewTicket }) {
   return (
     <div className="dashboard-container" style={{ padding: '2rem', maxWidth: '1200px', margin: '0 auto' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          <h1 style={{ margin: 0, background: 'linear-gradient(135deg, #a855f7, #00e5ff)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', fontWeight: 800 }}>
-            📊 Admin Insights & Analytics Portal
-          </h1>
-          <button 
-            className="btn btn-primary" 
-            onClick={() => setIsModalOpen(true)}
-            style={{ padding: '0.4rem 1rem', fontSize: '0.9rem', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '0.4rem', margin: 0 }}
-          >
-            ➕ สร้างเคสใหม่
-          </button>
-        </div>
+        <h1 style={{ margin: 0, background: 'linear-gradient(135deg, #a855f7, #00e5ff)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', fontWeight: 800 }}>
+          📊 Admin Insights & Analytics Portal
+        </h1>
         
         {activeSubTab === 'summary' && (
           <div style={{ display: 'flex', gap: '1rem' }}>
@@ -426,16 +418,6 @@ export default function AdminDashboard({ onNavigateToTickets, onViewTicket }) {
           </div>
         )}
       </div>
-
-      {isModalOpen && (
-        <CreateTicketModal 
-          onClose={() => setIsModalOpen(false)}
-          onSuccess={() => {
-            setIsModalOpen(false);
-            fetchReport();
-          }}
-        />
-      )}
 
       <div className="segment-control" style={{ marginBottom: '2rem', display: 'inline-flex', background: 'rgba(0,0,0,0.03)', border: '1px solid rgba(0,0,0,0.08)', padding: '0.25rem', borderRadius: '14px' }}>
         <button

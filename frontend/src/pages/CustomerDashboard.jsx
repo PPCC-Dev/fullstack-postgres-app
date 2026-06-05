@@ -1,13 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import CreateTicketModal from '../components/CreateTicketModal';
 
-export default function CustomerDashboard({ onViewTicket }) {
+export default function CustomerDashboard({ onViewTicket, refreshKey }) {
   const { user, token, API_URL } = useAuth();
   const [tickets, setTickets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [isModalOpen, setIsModalOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState('active'); // Add status filter
   const [sortOption, setSortOption] = useState('date_desc'); // Add sort option
   
@@ -98,9 +96,11 @@ export default function CustomerDashboard({ onViewTicket }) {
   };
 
   useEffect(() => {
-    fetchTickets();
-    fetchConfig();
-  }, [token]);
+    if (token) {
+      fetchTickets();
+      fetchConfig();
+    }
+  }, [token, refreshKey]);
 
   // Stat calculations
   const totalTickets = tickets.length;
@@ -135,13 +135,6 @@ export default function CustomerDashboard({ onViewTicket }) {
           <h1 className="page-title-gradient">ศูนย์ช่วยเหลือของคุณ</h1>
           <p className="subtitle-text" style={{ marginBottom: 0 }}>ส่งคำขอความช่วยเหลือ ติดตามผล และพูดคุยกับเจ้าหน้าที่ของเราได้ตลอด 24 ชั่วโมง</p>
         </div>
-        <button className="btn btn-primary" onClick={() => setIsModalOpen(true)}>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '0.25rem' }}>
-            <line x1="12" y1="5" x2="12" y2="19"></line>
-            <line x1="5" y1="12" x2="19" y2="12"></line>
-          </svg>
-          ส่งเคสช่วยเหลือใหม่
-        </button>
       </div>
 
       {/* Stats row */}
@@ -222,10 +215,7 @@ export default function CustomerDashboard({ onViewTicket }) {
             <div className="glass-card empty-state">
               <span className="empty-icon">📨</span>
               <h3>ยังไม่มีเคสหรือเคสช่วยเหลือ</h3>
-              <p>หากคุณพบปัญหาการทำงานหรือต้องการข้อมูลสนับสนุน สามารถกดสร้างเคสใหม่ด้านขวาบนได้ทันที</p>
-              <button className="btn btn-secondary" style={{ marginTop: '0.5rem' }} onClick={() => setIsModalOpen(true)}>
-                เริ่มต้นส่งเคสแรก
-              </button>
+              <p>หากคุณพบปัญหาการทำงานหรือต้องการข้อมูลสนับสนุน สามารถกดสร้างเคสใหม่ได้จากเมนู</p>
             </div>
           ) : displayedTickets.length === 0 ? (
             <div className="glass-card empty-state">
@@ -359,17 +349,6 @@ export default function CustomerDashboard({ onViewTicket }) {
           </div>
         </div>
       </div>
-
-      {/* Ticket Creation Modal */}
-        {isModalOpen && (
-        <CreateTicketModal 
-          onClose={() => setIsModalOpen(false)}
-          onSuccess={() => {
-            setIsModalOpen(false);
-            fetchTickets();
-          }}
-        />
-      )}
     </div>
   );
 }
