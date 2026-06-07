@@ -7,6 +7,7 @@ export default function TicketDetail({ ticketId, onBack }) {
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [supportStats, setSupportStats] = useState([]);
 
   // Form states
   const [newMessageText, setNewMessageText] = useState('');
@@ -52,6 +53,15 @@ export default function TicketDetail({ ticketId, onBack }) {
       if (msgsRes.ok) {
         const msgsData = await msgsRes.json();
         setMessages(msgsData);
+      }
+
+      // Fetch support stats config
+      const statsRes = await fetch(`${API_URL}/tickets/config/support-stats`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (statsRes.ok) {
+        const statsData = await statsRes.json();
+        setSupportStats(statsData);
       }
     } catch (err) {
       console.error(err);
@@ -342,12 +352,9 @@ export default function TicketDetail({ ticketId, onBack }) {
             )}
             <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.75rem', marginBottom: '0.75rem' }}>
               <span className={`badge ${
-                ticket.status === 'open' ? 'badge-status-open' :
-                ticket.status === 'assigned' ? 'badge-status-assigned' : 'badge-status-resolved'
-              }`}>
-                {ticket.status === 'open' ? '• รอยืนยัน' :
-                 ticket.status === 'assigned' ? '• กำลังดูแล' : '• เสร็จสิ้น'}
-              </span>
+                          <span className={`badge status-${ticket.status}`}>
+                            {ticket.status_desc || ticket.status}
+                          </span>
 
               <span className="badge badge-module">🧩 {ticket.module}</span>
               <span className="badge" style={{ background: 'rgba(236, 72, 153, 0.1)', color: '#ec4899', border: '1px solid rgba(236, 72, 153, 0.2)' }}>
@@ -653,7 +660,7 @@ export default function TicketDetail({ ticketId, onBack }) {
             {/* AGENT CONTROLS */}
             {user.role === 'agent' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '0.5rem' }}>
-                {ticket.status === 'open' ? (
+                {ticket.status === 'O' ? (
                   <button className="btn btn-primary" style={{ width: '100%' }} onClick={handleClaimTicket} disabled={updatingStatus}>
                     📥 เคลมเคสรับเคสดูแล
                   </button>
@@ -668,14 +675,17 @@ export default function TicketDetail({ ticketId, onBack }) {
                         disabled={updatingStatus}
                         style={{ background: 'var(--glass-bg)', cursor: 'pointer' }}
                       >
-                        <option value="assigned">⚡ กำลังประสานงาน (Assigned)</option>
-                        <option value="resolved">✅ แก้ไขเสร็จสิ้น (Resolved)</option>
-                        <option value="open">❌ คืนกลับเข้าคิวว่าง (Open)</option>
+                        {supportStats.map(stat => (
+                          <option key={stat.stat} value={stat.stat}>
+                            {stat.stat === 'C' ? '✅ ' : stat.stat === 'O' ? '❌ ' : '⚡ '}
+                            {stat.description}
+                          </option>
+                        ))}
                       </select>
                     </div>
 
-                    {ticket.status === 'assigned' && (
-                      <button className="btn btn-primary" style={{ width: '100%', marginTop: '0.5rem' }} onClick={() => handleStatusChange('resolved')} disabled={updatingStatus}>
+                    {ticket.status !== 'C' && ticket.status !== 'O' && (
+                      <button className="btn btn-primary" style={{ width: '100%', marginTop: '0.5rem' }} onClick={() => handleStatusChange('C')} disabled={updatingStatus}>
                         ✅ แก้ไขสำเร็จ (Resolve Case)
                       </button>
                     )}
@@ -685,20 +695,20 @@ export default function TicketDetail({ ticketId, onBack }) {
             )}
 
             {/* CUSTOMER CONTROLS */}
-            {user.role === 'customer' && ticket.status !== 'resolved' && (
+            {user.role === 'customer' && ticket.status !== 'C' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '0.5rem' }}>
                 <p style={{ fontSize: '0.8rem', color: '#94a3b8' }}>หากปัญหานี้ได้รับการแก้ไขแล้ว คุณสามารถช่วยปิดเคสช่วยเหลือได้</p>
-                <button className="btn btn-primary" style={{ width: '100%', backgroundColor: 'var(--status-resolved)', color: '#ffffff', boxShadow: 'none' }} onClick={() => handleStatusChange('resolved')} disabled={updatingStatus}>
+                <button className="btn btn-primary" style={{ width: '100%', backgroundColor: 'var(--status-resolved)', color: '#ffffff', boxShadow: 'none' }} onClick={() => handleStatusChange('C')} disabled={updatingStatus}>
                   ✅ แก้ไขปัญหานี้เสร็จสิ้นแล้ว
                 </button>
               </div>
             )}
 
             {/* REOPEN IF RESOLVED */}
-            {ticket.status === 'resolved' && (
+            {ticket.status === 'C' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '0.5rem', textAlign: 'center' }}>
                 <span style={{ fontSize: '0.8rem', color: 'var(--status-resolved)', fontWeight: 600 }}>🏆 เคสนี้ถูกทำเครื่องหมายว่าปิดงานแล้ว</span>
-                <button className="btn btn-secondary" style={{ width: '100%' }} onClick={() => handleStatusChange(user.role === 'agent' ? 'assigned' : 'open')} disabled={updatingStatus}>
+                <button className="btn btn-secondary" style={{ width: '100%' }} onClick={() => handleStatusChange(user.role === 'agent' ? 'I' : 'O')} disabled={updatingStatus}>
                   🔓 เปิดเคสขึ้นมาใหม่อีกครั้ง
                 </button>
               </div>

@@ -104,15 +104,15 @@ export default function CustomerDashboard({ onViewTicket, refreshKey }) {
 
   // Stat calculations
   const totalTickets = tickets.length;
-  const activeTickets = tickets.filter(t => t.status === 'open' || t.status === 'assigned').length;
-  const resolvedTickets = tickets.filter(t => t.status === 'resolved').length;
+  const activeTickets = tickets.filter(t => t.status !== 'C').length;
+  const resolvedTickets = tickets.filter(t => t.status === 'C').length;
 
   // Filter and sort tickets for display
   const displayedTickets = tickets
     .filter(t => {
       if (statusFilter === 'all') return true;
-      if (statusFilter === 'active') return t.status === 'open' || t.status === 'assigned';
-      if (statusFilter === 'resolved') return t.status === 'resolved';
+      if (statusFilter === 'active') return t.status !== 'C';
+      if (statusFilter === 'resolved') return t.status === 'C';
       return true;
     })
     .sort((a, b) => {
@@ -230,12 +230,8 @@ export default function CustomerDashboard({ onViewTicket, refreshKey }) {
                   <div className="ticket-main">
                     <div className="ticket-header">
                       <span className="ticket-id">{ticket.ticket_number || '#' + String(ticket.id).padStart(3, '0')}</span>
-                      <span className={`badge ${
-                        ticket.status === 'open' ? 'badge-status-open' :
-                        ticket.status === 'assigned' ? 'badge-status-assigned' : 'badge-status-resolved'
-                      }`}>
-                        {ticket.status === 'open' ? '• รอยืนยัน' :
-                         ticket.status === 'assigned' ? '• กำลังดูแล' : '• เสร็จสิ้น'}
+                      <span className={`badge status-${ticket.status}`}>
+                        {ticket.status_desc || ticket.status}
                       </span>
 
                       <span className="badge badge-module">🧩 {ticket.module}</span>
@@ -337,13 +333,13 @@ export default function CustomerDashboard({ onViewTicket, refreshKey }) {
             <hr style={{ border: 'none', borderBottom: '1px solid var(--glass-border)', margin: '0.5rem 0' }} />
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.8rem', color: '#334155' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <span style={{ color: 'var(--status-open)' }}>●</span> รอยืนยัน = เคสเข้าระบบ รอเจ้าหน้าที่มากดรับ
+                <span style={{ color: 'var(--status-open)' }}>●</span> 010-Open = เคสเข้าระบบ รอเจ้าหน้าที่รับเรื่อง
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <span style={{ color: 'var(--status-assigned)' }}>●</span> กำลังดูแล = มีเจ้าหน้าที่รับเรื่องดูแลแล้ว
+                <span style={{ color: 'var(--status-assigned)' }}>●</span> 050-In-Process = กำลังดำเนินการแก้ไข
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <span style={{ color: 'var(--status-resolved)' }}>●</span> เสร็จสิ้น = แก้ไขปัญหาเรียบร้อย
+                <span style={{ color: 'var(--status-resolved)' }}>●</span> 999-Closed = แก้ไขปัญหาเรียบร้อย ปิดเคส
               </div>
             </div>
           </div>

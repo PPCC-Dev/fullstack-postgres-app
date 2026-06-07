@@ -85,7 +85,7 @@ export const createTicket = async (req, res) => {
 
     const newTicketResult = await pool.query(
       `INSERT INTO tickets (ticket_number, title, description, module, program_type, issue_type, form_name, additional_email, priority, status, customer_id, cust_num, attachment_url, attachment_name) 
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'open', $10, $11, $12, $13) 
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'O', $10, $11, $12, $13) 
        RETURNING *`,
       [ticketNumber, title, description, ticketModule, ticketProgramType, ticketIssueType, form_name || null, additional_email || null, ticketPriority, customerId, cust_num, attachmentUrl, attachmentName]
     );
@@ -160,11 +160,12 @@ export const getTickets = async (req, res) => {
       ticketsResult = await pool.query(
         `SELECT t.*, 
                 c.name as user_name, c.email as customer_email, c.cust_num as user_cust_num,
-                
+                ss.description as status_desc,
                 a.name as agent_name,
                 cust.cust_name as actual_customer_name
          FROM tickets t
          JOIN users c ON t.customer_id = c.id
+         LEFT JOIN support_stats ss ON t.status = ss.stat
          LEFT JOIN users a ON t.agent_id = a.id
          LEFT JOIN customers cust ON t.cust_num = cust.cust_num
          ORDER BY t.updated_at DESC`
@@ -174,11 +175,12 @@ export const getTickets = async (req, res) => {
       ticketsResult = await pool.query(
         `SELECT t.*, 
                 c.name as user_name, c.cust_num as user_cust_num,
-                
+                ss.description as status_desc,
                 a.name as agent_name,
                 cust.cust_name as actual_customer_name
          FROM tickets t
          JOIN users c ON t.customer_id = c.id
+         LEFT JOIN support_stats ss ON t.status = ss.stat
          LEFT JOIN users a ON t.agent_id = a.id
          LEFT JOIN customers cust ON t.cust_num = cust.cust_num
          WHERE t.customer_id = $1
@@ -203,12 +205,13 @@ export const getTicketById = async (req, res) => {
     const ticketResult = await pool.query(
       `SELECT t.*, 
               c.name as user_name, c.email as customer_email, c.cust_num as user_cust_num,
-              
+              ss.description as status_desc,
               a.name as agent_name,
               r.name as resolver_name,
               cust.cust_name as actual_customer_name
        FROM tickets t
        JOIN users c ON t.customer_id = c.id
+       LEFT JOIN support_stats ss ON t.status = ss.stat
        LEFT JOIN users a ON t.agent_id = a.id
        LEFT JOIN users r ON t.resolved_by = r.id
        LEFT JOIN customers cust ON t.cust_num = cust.cust_num
@@ -254,14 +257,14 @@ export const claimTicket = async (req, res) => {
     }
 
     const ticket = checkTicket.rows[0];
-    if (ticket.status !== 'open') {
+    if (ticket.status !== 'O') {
       return res.status(400).json({ error: 'Ticket is already assigned or resolved.' });
     }
 
-    // Update ticket with agent_id and set status to 'assigned'
+    // Update ticket with agent_id and set status to 'I'
     const updatedResult = await pool.query(
       `UPDATE tickets 
-       SET agent_id = $1, status = 'assigned', updated_at = CURRENT_TIMESTAMP, assigned_at = CURRENT_TIMESTAMP
+       SET agent_id = $1, status = 'I', updated_at = CURRENT_TIMESTAMP, assigned_at = CURRENT_TIMESTAMP
        WHERE id = $2 
        RETURNING *`,
       [agentId, ticketId]
@@ -307,7 +310,8 @@ export const updateTicketStatus = async (req, res) => {
   const ticketId = req.params.id;
   const { status } = req.body;
 
-  const validStatuses = ['open', 'assigned', 'resolved'];
+  const validStatsResult = await pool.query('SELECT stat FROM support_stats');
+  const validStatuses = validStatsResult.rows.map(r => r.stat);
   if (!validStatuses.includes(status)) {
     return res.status(400).json({ error: 'Invalid status value.' });
   }
@@ -323,25 +327,25 @@ export const updateTicketStatus = async (req, res) => {
     // Authorization
     if (role === 'agent' || role === 'admin') {
       // Agents and admins can change status
-      // If setting back to 'open', clear agent_id
+      // If setting back to 'O', clear agent_id
       let query;
       let params;
 
-      if (status === 'open') {
+      if (status === 'O') {
         query = `UPDATE tickets SET status = $1, agent_id = NULL, assigned_at = NULL, updated_at = CURRENT_TIMESTAMP, resolved_by = NULL WHERE id = $2 RETURNING *`;
         params = [status, ticketId];
       } else {
         // If assigned but no agent, set to current agent
         const newAgentId = ticket.agent_id || userId;
-        const resolvedClause = status === 'resolved' ? `, resolved_at = CURRENT_TIMESTAMP, resolved_by = $4` : '';
+        const resolvedClause = status === 'C' ? `, resolved_at = CURRENT_TIMESTAMP, resolved_by = $4` : '';
         const assignedClause = (!ticket.agent_id && newAgentId) ? `, assigned_at = CURRENT_TIMESTAMP` : '';
         query = `UPDATE tickets SET status = $1, agent_id = $2, updated_at = CURRENT_TIMESTAMP${assignedClause}${resolvedClause} WHERE id = $3 RETURNING *`;
-        params = status === 'resolved' ? [status, newAgentId, ticketId, userId] : [status, newAgentId, ticketId];
+        params = status === 'C' ? [status, newAgentId, ticketId, userId] : [status, newAgentId, ticketId];
       }
 
       const updated = await pool.query(query, params);
       const updatedTicket = updated.rows[0];
-      if (status === 'resolved') {
+      if (status === 'C') {
         try {
           const customerRes = await pool.query('SELECT email FROM users WHERE id = $1', [ticket.customer_id]);
           const customerEmail = customerRes.rows[0]?.email;
@@ -359,12 +363,12 @@ export const updateTicketStatus = async (req, res) => {
           console.error('Failed to send closing email/notification:', emailErr);
         }
       } else {
-        // Status changed to something other than resolved (e.g. open, assigned)
+        // Status changed to something other than resolved
         try {
           const customerRes = await pool.query('SELECT email FROM users WHERE id = $1', [ticket.customer_id]);
           const customerEmail = customerRes.rows[0]?.email;
-          const statusMap = { 'open': 'เปิดรับเรื่อง', 'assigned': 'กำลังดำเนินการ' };
-          const thStatus = statusMap[status] || status.toUpperCase();
+          const statDescRes = await pool.query('SELECT description FROM support_stats WHERE stat = $1', [status]);
+          const thStatus = statDescRes.rows[0]?.description || status;
           
           await sendTicketChangedEmail(
             updatedTicket, 
@@ -383,11 +387,11 @@ export const updateTicketStatus = async (req, res) => {
         return res.status(403).json({ error: 'Access denied. You do not own this ticket.' });
       }
 
-      if (status !== 'resolved' && status !== 'open') {
+      if (status !== 'C' && status !== 'O') {
         return res.status(400).json({ error: 'Customers can only reopen or close (resolve) their own tickets.' });
       }
 
-      if (status === 'open') {
+      if (status === 'O') {
         const updated = await pool.query(
           `UPDATE tickets SET status = $1, updated_at = CURRENT_TIMESTAMP, resolved_by = NULL WHERE id = $2 RETURNING *`,
           [status, ticketId]
@@ -404,8 +408,8 @@ export const updateTicketStatus = async (req, res) => {
         }
         return res.status(200).json(reopenedTicket);
       } else {
-        const resolvedClause = status === 'resolved' ? `, resolved_at = CURRENT_TIMESTAMP, resolved_by = $3` : '';
-        const params = status === 'resolved' ? [status, ticketId, userId] : [status, ticketId];
+        const resolvedClause = status === 'C' ? `, resolved_at = CURRENT_TIMESTAMP, resolved_by = $3` : '';
+        const params = status === 'C' ? [status, ticketId, userId] : [status, ticketId];
         const updated = await pool.query(
           `UPDATE tickets SET status = $1, updated_at = CURRENT_TIMESTAMP${resolvedClause} WHERE id = $2 RETURNING *`,
           params
@@ -633,7 +637,7 @@ export const getAgentStats = async (req, res) => {
 
     // Format results
     const stats = {
-      status: { open: 0, assigned: 0, resolved: 0 },
+      status: { O: 0, I: 0, C: 0 },
       priority: { low: 0, medium: 0, high: 0 },
 
       module: {},
@@ -660,7 +664,7 @@ export const getAgentStats = async (req, res) => {
       stats.module[r.module] = parseInt(r.count, 10);
     });
 
-    stats.total = stats.status.open + stats.status.assigned + stats.status.resolved;
+    stats.total = stats.status.O + stats.status.I + stats.status.C;
 
     return res.status(200).json(stats);
   } catch (error) {

@@ -134,7 +134,7 @@ export default function AdminDashboard({ onNavigateToTickets, onViewTicket, refr
       (t.user_name || t.customer_name) + ' (' + (t.actual_customer_name || t.customer_cust_num || '-') + ')',
       t.priority,
       t.module,
-      t.status === 'open' ? 'รอดำเนินการ' : t.status === 'assigned' ? 'กำลังแก้ไข' : 'ปิดเคสแล้ว',
+      t.status_desc || t.status,
       new Date(t.created_at).toLocaleString('th-TH'),
       t.resolved_at ? new Date(t.resolved_at).toLocaleString('th-TH') : '-',
       t.agent_name || '-'
@@ -208,14 +208,14 @@ export default function AdminDashboard({ onNavigateToTickets, onViewTicket, refr
                     </td>
                     <td style={{ padding: '0.75rem', color: '#334155' }}>{ticket.user_name || ticket.customer_name} <span style={{fontSize: '0.85em', color: '#64748b'}}>({ticket.actual_customer_name || ticket.user_cust_num || ticket.customer_cust_num || '-'})</span></td>
                     <td style={{ padding: '0.75rem' }}>
-                      <span className={`badge-status ${ticket.status}`}>
-                        {ticket.status === 'open' ? 'รอดำเนินการ' : ticket.status === 'assigned' ? 'กำลังแก้ไข' : 'ปิดเคสแล้ว'}
+                      <span className={`badge-status status-${ticket.status}`}>
+                        {ticket.status_desc || ticket.status}
                       </span>
                     </td>
                     <td style={{ padding: '0.75rem', color: '#334155' }}>
-                      {new Date(ticket.status === 'resolved' && ticket.resolved_at ? ticket.resolved_at : ticket.created_at).toLocaleString('th-TH')}
+                      {new Date(ticket.status === 'C' && ticket.resolved_at ? ticket.resolved_at : ticket.created_at).toLocaleString('th-TH')}
                     </td>
-                    <td style={{ padding: '0.75rem', color: '#475569' }}>{ticket.agent_name || (ticket.status === 'resolved' ? '-' : 'ยังไม่มีเจ้าหน้าที่รับเคส')}</td>
+                    <td style={{ padding: '0.75rem', color: '#475569' }}>{ticket.agent_name || (ticket.status === 'C' ? '-' : 'ยังไม่มีเจ้าหน้าที่รับเคส')}</td>
                   </tr>
                 ))}
               </tbody>
@@ -663,7 +663,7 @@ export default function AdminDashboard({ onNavigateToTickets, onViewTicket, refr
               <div>
                 <span style={{ color: '#64748b', fontSize: '0.8rem', fontWeight: 600 }}>⏳ เคสกำลังประสานงาน</span>
                 <div style={{ fontSize: '1.75rem', fontWeight: 'bold', color: '#8b5cf6', marginTop: '0.25rem' }}>
-                  {insightFilteredTickets.filter(t => t.status === 'open' || t.status === 'assigned').length} เคส
+                  {insightFilteredTickets.filter(t => t.status !== 'C').length} เคส
                 </div>
               </div>
               <span style={{ fontSize: '2rem' }}>⏳</span>
@@ -673,7 +673,7 @@ export default function AdminDashboard({ onNavigateToTickets, onViewTicket, refr
               <div>
                 <span style={{ color: '#64748b', fontSize: '0.8rem', fontWeight: 600 }}>🏆 เคสที่แก้ไขเสร็จสิ้น</span>
                 <div style={{ fontSize: '1.75rem', fontWeight: 'bold', color: '#10b981', marginTop: '0.25rem' }}>
-                  {insightFilteredTickets.filter(t => t.status === 'resolved').length} เคส
+                  {insightFilteredTickets.filter(t => t.status === 'C').length} เคส
                 </div>
               </div>
               <span style={{ fontSize: '2rem' }}>✅</span>
@@ -684,7 +684,7 @@ export default function AdminDashboard({ onNavigateToTickets, onViewTicket, refr
                 <span style={{ color: '#64748b', fontSize: '0.8rem', fontWeight: 600 }}>🎯 อัตราการปิดเคสสำเร็จ</span>
                 <div style={{ fontSize: '1.75rem', fontWeight: 'bold', color: '#f59e0b', marginTop: '0.25rem' }}>
                   {insightFilteredTickets.length > 0 
-                    ? `${Math.round((insightFilteredTickets.filter(t => t.status === 'resolved').length / insightFilteredTickets.length) * 100)}%`
+                    ? `${Math.round((insightFilteredTickets.filter(t => t.status === 'C').length / insightFilteredTickets.length) * 100)}%`
                     : '0%'
                   }
                 </div>
@@ -779,7 +779,7 @@ export default function AdminDashboard({ onNavigateToTickets, onViewTicket, refr
                 ) : (
                   agents.map(agName => {
                     const agTickets = insightFilteredTickets.filter(t => t.agent_name === agName);
-                    const agResolved = agTickets.filter(t => t.status === 'resolved').length;
+                    const agResolved = agTickets.filter(t => t.status === 'C').length;
                     const agActive = agTickets.length - agResolved;
                     const pct = agTickets.length > 0 ? Math.round((agResolved / agTickets.length) * 100) : 0;
                     
@@ -873,9 +873,9 @@ export default function AdminDashboard({ onNavigateToTickets, onViewTicket, refr
         @keyframes spin { to { transform: rotate(360deg); } }
         .glass-table th { font-weight: 600; }
         .badge-status { padding: 0.25rem 0.6rem; border-radius: 9999px; font-size: 0.8rem; font-weight: 600; }
-        .badge-status.open { background: #fee2e2; color: #ef4444; border: 1px solid #fca5a5; }
-        .badge-status.assigned { background: #fef3c7; color: #d97706; border: 1px solid #fcd34d; }
-        .badge-status.resolved { background: #d1fae5; color: #059669; border: 1px solid #6ee7b7; }
+        .badge-status.status-O { background: #fee2e2; color: #ef4444; border: 1px solid #fca5a5; }
+        .badge-status.status-I { background: #fef3c7; color: #d97706; border: 1px solid #fcd34d; }
+        .badge-status.status-C { background: #d1fae5; color: #059669; border: 1px solid #6ee7b7; }
         
         .clickable-card {
           cursor: pointer;

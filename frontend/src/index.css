@@ -749,19 +749,19 @@ h1, h2, h3, h4 {
   gap: 0.25rem;
 }
 
-.badge-status-open {
+.badge-status-open, .status-O {
   background: rgba(0, 75, 181, 0.08);
   color: #004bb5;
   border: 1px solid rgba(0, 75, 181, 0.12);
 }
 
-.badge-status-assigned {
+.badge-status-assigned, .status-I, .status-D, .status-F, .status-M, .status-N, .status-Q, .status-S, .status-T, .status-V, .status-W {
   background: rgba(245, 158, 11, 0.08);
   color: #d97706;
   border: 1px solid rgba(245, 158, 11, 0.12);
 }
 
-.badge-status-resolved {
+.badge-status-resolved, .status-C {
   background: rgba(22, 163, 74, 0.08);
   color: #16a34a;
   border: 1px solid rgba(22, 163, 74, 0.12);
