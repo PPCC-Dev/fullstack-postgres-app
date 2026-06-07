@@ -1376,7 +1376,7 @@ export const deleteIssueType = async (req, res) => {
 
 export const getSupportStats = async (req, res) => {
   try {
-    const result = await pool.query('SELECT * FROM support_stats ORDER BY stat ASC');
+    const result = await pool.query('SELECT * FROM support_stats ORDER BY description ASC');
     return res.status(200).json(result.rows);
   } catch (error) {
     console.error('Error fetching support stats:', error);
