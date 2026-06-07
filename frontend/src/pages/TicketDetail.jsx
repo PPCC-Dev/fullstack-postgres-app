@@ -351,10 +351,9 @@ export default function TicketDetail({ ticketId, onBack }) {
               </div>
             )}
             <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.75rem', marginBottom: '0.75rem' }}>
-              <span className={`badge ${
-                          <span className={`badge status-${ticket.status}`}>
-                            {ticket.status_desc || ticket.status}
-                          </span>
+              <span className={`badge status-${ticket.status}`}>
+                {ticket.status_desc || ticket.status}
+              </span>
 
               <span className="badge badge-module">🧩 {ticket.module}</span>
               <span className="badge" style={{ background: 'rgba(236, 72, 153, 0.1)', color: '#ec4899', border: '1px solid rgba(236, 72, 153, 0.2)' }}>
