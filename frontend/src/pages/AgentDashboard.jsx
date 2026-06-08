@@ -565,9 +565,9 @@ export default function AgentDashboard({ onViewTicket, initialTab = 'queue', ref
     ? tickets 
     : tickets.filter(t => t.cust_num === customerFilter);
 
-  const unassignedTickets = filteredByCustomerTickets.filter(t => t.status === 'open');
-  const myAssignedTickets = filteredByCustomerTickets.filter(t => t.status === 'assigned' && t.agent_id === user.id);
-  const resolvedTickets = filteredByCustomerTickets.filter(t => t.status === 'resolved');
+  const unassignedTickets = filteredByCustomerTickets.filter(t => t.status === 'O');
+  const myAssignedTickets = filteredByCustomerTickets.filter(t => t.status !== 'O' && t.status !== 'C' && t.agent_id === user.id);
+  const resolvedTickets = filteredByCustomerTickets.filter(t => t.status === 'C');
   const agents = members.filter(m => (m.role || '').toLowerCase() === 'agent');
   
   // For 'all' tab, apply statusFilter
@@ -584,9 +584,9 @@ export default function AgentDashboard({ onViewTicket, initialTab = 'queue', ref
   const paginatedActiveList = activeList.slice(startIndex, startIndex + itemsPerPage);
 
   // Stats helper variables
-  const openCount = filteredByCustomerTickets.filter(t => t.status === 'open').length;
-  const assignedCount = filteredByCustomerTickets.filter(t => t.status === 'assigned').length;
-  const resolvedCount = filteredByCustomerTickets.filter(t => t.status === 'resolved').length;
+  const openCount = filteredByCustomerTickets.filter(t => t.status === 'O').length;
+  const assignedCount = filteredByCustomerTickets.filter(t => t.status !== 'O' && t.status !== 'C').length;
+  const resolvedCount = filteredByCustomerTickets.filter(t => t.status === 'C').length;
   const totalCount = filteredByCustomerTickets.length;
 
   // Percentage calculations for dynamic chart bars
@@ -642,9 +642,9 @@ export default function AgentDashboard({ onViewTicket, initialTab = 'queue', ref
       {activeTab !== 'config' && (
         <div className="stats-grid">
         <div 
-          className={`glass-card stat-card glow-cyan ${statusFilter === 'open' && activeTab === 'all' ? 'selected' : ''}`} 
-          style={{ '--card-border-color': 'var(--accent-cyan)', cursor: 'pointer', transform: statusFilter === 'open' && activeTab === 'all' ? 'scale(1.02)' : 'none', border: statusFilter === 'open' && activeTab === 'all' ? '2px solid var(--accent-cyan)' : '' }}
-          onClick={() => { setActiveTab('all'); setStatusFilter('open'); }}
+          className={`glass-card stat-card glow-cyan ${statusFilter === 'O' && activeTab === 'all' ? 'selected' : ''}`} 
+          style={{ '--card-border-color': 'var(--accent-cyan)', cursor: 'pointer', transform: statusFilter === 'O' && activeTab === 'all' ? 'scale(1.02)' : 'none', border: statusFilter === 'O' && activeTab === 'all' ? '2px solid var(--accent-cyan)' : '' }}
+          onClick={() => { setActiveTab('all'); setStatusFilter('O'); }}
         >
           <div className="stat-info">
             <span className="stat-label">เคสรอลูกเรือเคลม</span>
@@ -653,9 +653,9 @@ export default function AgentDashboard({ onViewTicket, initialTab = 'queue', ref
           <span className="stat-icon">📥</span>
         </div>
         <div 
-          className={`glass-card stat-card glow-purple ${statusFilter === 'assigned' && activeTab === 'all' ? 'selected' : ''}`} 
-          style={{ '--card-border-color': 'var(--accent-purple)', cursor: 'pointer', transform: statusFilter === 'assigned' && activeTab === 'all' ? 'scale(1.02)' : 'none', border: statusFilter === 'assigned' && activeTab === 'all' ? '2px solid var(--accent-purple)' : '' }}
-          onClick={() => { setActiveTab('all'); setStatusFilter('assigned'); }}
+          className={`glass-card stat-card glow-purple ${statusFilter === 'I' && activeTab === 'all' ? 'selected' : ''}`} 
+          style={{ '--card-border-color': 'var(--accent-purple)', cursor: 'pointer', transform: statusFilter === 'I' && activeTab === 'all' ? 'scale(1.02)' : 'none', border: statusFilter === 'I' && activeTab === 'all' ? '2px solid var(--accent-purple)' : '' }}
+          onClick={() => { setActiveTab('all'); setStatusFilter('I'); }}
         >
           <div className="stat-info">
             <span className="stat-label">กำลังดำเนินการ</span>
@@ -664,9 +664,9 @@ export default function AgentDashboard({ onViewTicket, initialTab = 'queue', ref
           <span className="stat-icon">⚡</span>
         </div>
         <div 
-          className={`glass-card stat-card glow-cyan ${statusFilter === 'resolved' && activeTab === 'all' ? 'selected' : ''}`} 
-          style={{ '--card-border-color': 'var(--status-resolved)', cursor: 'pointer', transform: statusFilter === 'resolved' && activeTab === 'all' ? 'scale(1.02)' : 'none', border: statusFilter === 'resolved' && activeTab === 'all' ? '2px solid var(--status-resolved)' : '' }}
-          onClick={() => { setActiveTab('all'); setStatusFilter('resolved'); }}
+          className={`glass-card stat-card glow-cyan ${statusFilter === 'C' && activeTab === 'all' ? 'selected' : ''}`} 
+          style={{ '--card-border-color': 'var(--status-resolved)', cursor: 'pointer', transform: statusFilter === 'C' && activeTab === 'all' ? 'scale(1.02)' : 'none', border: statusFilter === 'C' && activeTab === 'all' ? '2px solid var(--status-resolved)' : '' }}
+          onClick={() => { setActiveTab('all'); setStatusFilter('C'); }}
         >
           <div className="stat-info">
             <span className="stat-label">แก้ไขเสร็จสิ้นแล้ว</span>
@@ -754,7 +754,9 @@ export default function AgentDashboard({ onViewTicket, initialTab = 'queue', ref
                         <div className="ticket-main">
                           <div className="ticket-header">
                             <span className="ticket-id">{ticket.ticket_number || '#' + String(ticket.id).padStart(3, '0')}</span>
-                            <span className="badge badge-status-open">• รอยืนยัน</span>
+                            <span className={`badge status-${ticket.status}`}>
+                              {ticket.status_desc || ticket.status}
+                            </span>
                             
                             <span className="badge badge-module">🧩 {ticket.module}</span>
                             <span className="badge" style={{ background: 'rgba(236, 72, 153, 0.1)', color: '#ec4899', border: '1px solid rgba(236, 72, 153, 0.2)' }}>
@@ -867,13 +869,10 @@ export default function AgentDashboard({ onViewTicket, initialTab = 'queue', ref
                         <div className="ticket-main">
                           <div className="ticket-header">
                             <span className="ticket-id">{ticket.ticket_number || '#' + String(ticket.id).padStart(3, '0')}</span>
-                            <span className={`badge ${
-                              ticket.status === 'open' ? 'badge-status-open' :
-                              ticket.status === 'assigned' ? 'badge-status-assigned' : 'badge-status-resolved'
-                            }`}>
-                              {ticket.status === 'open' ? '• รอยืนยัน' :
-                               ticket.status === 'assigned' ? '• กำลังดูแล' : '• เสร็จสิ้น'}
+                            <span className={`badge status-${ticket.status}`}>
+                              {ticket.status_desc || ticket.status}
                             </span>
+
                             
                             <span className="badge badge-module">🧩 {ticket.module}</span>
                             <span className={`badge badge-priority-${ticket.priority}`}>

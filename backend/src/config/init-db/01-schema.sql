@@ -391,7 +391,7 @@ CREATE TABLE public.tickets (
     title character varying(200) NOT NULL,
     description text NOT NULL,
     priority character varying(20) DEFAULT 'medium'::character varying NOT NULL,
-    status character varying(20) DEFAULT 'open'::character varying NOT NULL,
+    status character varying(20) DEFAULT 'O'::character varying NOT NULL,
     customer_id integer,
     agent_id integer,
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
@@ -410,8 +410,7 @@ CREATE TABLE public.tickets (
     additional_email character varying(255),
     program_type character varying(100) DEFAULT 'Standard'::character varying,
     issue_type character varying(100) DEFAULT 'Technical'::character varying,
-    CONSTRAINT tickets_priority_check CHECK (((priority)::text = ANY ((ARRAY['low'::character varying, 'medium'::character varying, 'high'::character varying])::text[]))),
-    CONSTRAINT tickets_status_check CHECK (((status)::text = ANY ((ARRAY['open'::character varying, 'assigned'::character varying, 'resolved'::character varying])::text[])))
+    CONSTRAINT tickets_priority_check CHECK (((priority)::text = ANY ((ARRAY['low'::character varying, 'medium'::character varying, 'high'::character varying])::text[])))
 );
 
 
