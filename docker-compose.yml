@@ -26,6 +26,11 @@ services:
       - DB_DATABASE=apex_support_db
       - DB_PORT=5432
       - JWT_SECRET=supersecretkeyforapexsupportdesk2026!
+      - SMTP_HOST=${SMTP_HOST}
+      - SMTP_PORT=${SMTP_PORT}
+      - SMTP_USER=${SMTP_USER}
+      - SMTP_PASS=${SMTP_PASS}
+      - SMTP_FROM=${SMTP_FROM}
     ports:
       - "5001:5001"
     volumes:
