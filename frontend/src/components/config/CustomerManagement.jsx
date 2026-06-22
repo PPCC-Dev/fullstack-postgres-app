@@ -195,7 +195,7 @@ const CustomerManagement = () => {
           className="btn btn-primary" 
           style={{ padding: '0.5rem 1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem', borderRadius: '10px', fontSize: '0.9rem' }}
         >
-          <span>➕ เพิ่มลูกค้าใหม่</span>
+          <span>➕ เพิ่มข้อมูล</span>
         </button>
       </div>
       

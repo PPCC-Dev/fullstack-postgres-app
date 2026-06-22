@@ -35,7 +35,7 @@ export const authenticateToken = async (req, res, next) => {
     req.user = verified; // Contains id, email, name from token
     req.user.user_role = result.rows[0].user_role; // The actual role name (e.g., 'Senior Support')
     // Fallback to user_role if base_role is not found (for backwards compatibility)
-    req.user.role = result.rows[0].base_role || result.rows[0].user_role; 
+    req.user.role = (result.rows[0].base_role || result.rows[0].user_role || '').toLowerCase(); 
     req.user.cust_num = result.rows[0].cust_num;
     
     next();

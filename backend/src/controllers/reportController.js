@@ -23,11 +23,19 @@ export const getSummaryReport = async (req, res) => {
     // Fetch all tickets for the period with customer and agent info
     const ticketsQuery = `
       SELECT t.*, 
+             COALESCE(pt.name, t.program_type) as program_type,
              c.name as customer_name, c.cust_num as customer_cust_num,
-             a.name as agent_name
+             a.name as agent_name,
+             r.name as resolver_name,
+             cust.cust_name as actual_customer_name,
+             ss.description as status_description
       FROM tickets t
-      JOIN users c ON t.customer_id = c.id
+      LEFT JOIN users c ON t.customer_id = c.id
       LEFT JOIN users a ON t.agent_id = a.id
+      LEFT JOIN users r ON t.resolved_by = r.id
+      LEFT JOIN program_types pt ON t.program_type = pt.value
+      LEFT JOIN customers cust ON t.cust_num = cust.cust_num
+      LEFT JOIN support_stats ss ON t.status = ss.stat
       WHERE 1=1 ${dateFilter.replace('created_at', 't.created_at')} ${customerFilter}
       ORDER BY t.created_at DESC
     `;
@@ -36,10 +44,10 @@ export const getSummaryReport = async (req, res) => {
 
     const totalCases = tickets.length;
     
-    const activeTickets = tickets.filter(t => t.status === 'open' || t.status === 'assigned');
+    const activeTickets = tickets.filter(t => ['open', 'assigned', 'O', 'I'].includes(t.status));
     const activeCases = activeTickets.length;
 
-    const closedTickets = tickets.filter(t => t.status === 'resolved');
+    const closedTickets = tickets.filter(t => ['resolved', 'C'].includes(t.status));
     const closedCases = closedTickets.length;
 
     // Calculate average resolution time using DB for accuracy on resolved_at
@@ -52,7 +60,7 @@ export const getSummaryReport = async (req, res) => {
     const avgTimeResult = await pool.query(`
       SELECT AVG(EXTRACT(EPOCH FROM (resolved_at - created_at))) as avg_seconds
       FROM tickets 
-      WHERE status = 'resolved' AND resolved_at IS NOT NULL ${dateFilter} ${avgCustomerFilter}
+      WHERE status IN ('resolved', 'C') AND resolved_at IS NOT NULL ${dateFilter} ${avgCustomerFilter}
     `, avgParams);
     
     const avgSeconds = avgTimeResult.rows[0].avg_seconds ? parseFloat(avgTimeResult.rows[0].avg_seconds) : 0;

@@ -8,6 +8,7 @@ import {
   addMessage, 
   getTicketMessages,
   getAgentStats,
+  updateTicketDetails,
 
   getModules,
   createModule,
@@ -93,6 +94,7 @@ router.get('/:id', getTicketById);
 // Ticket Assign/Status updates
 router.post('/:id/claim', requireAgent, claimTicket);
 router.put('/:id/status', updateTicketStatus);
+router.put('/:id', requireAgent, updateTicketDetails);
 router.put('/:id/solution-workaround', requireAgent, updateTicketSolutionWorkaround);
 router.post('/:id/attachments', upload.array('attachments', 10), addTicketAttachments);
 router.delete('/:id/attachments/:attachmentId', deleteTicketAttachment);

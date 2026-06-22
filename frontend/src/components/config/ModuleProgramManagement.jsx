@@ -204,7 +204,7 @@ const ModuleProgramManagement = ({ initialModuleFilter = '' }) => {
           style={{ margin: 0, flex: 2, minWidth: '200px' }}
         />
         <button type="submit" className="btn btn-primary" disabled={!newModule.trim() || !newProgramGroup.trim()} style={{ padding: '0.75rem 2rem', whiteSpace: 'nowrap' }}>
-          ➕ เพิ่มโปรแกรม
+          ➕ เพิ่มข้อมูล
         </button>
       </form>
 

@@ -179,7 +179,7 @@ const SupportStatManagement = () => {
           style={{ margin: 0, flex: 2, minWidth: '200px' }}
         />
         <button type="submit" className="btn btn-primary" disabled={!newStat.trim() || !newDescription.trim()} style={{ padding: '0.75rem 2.5rem', whiteSpace: 'nowrap' }}>
-          ➕ เพิ่มสถานะ
+          ➕ เพิ่มข้อมูล
         </button>
       </form>
 

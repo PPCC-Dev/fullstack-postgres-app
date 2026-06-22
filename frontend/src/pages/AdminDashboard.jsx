@@ -68,14 +68,15 @@ export default function AdminDashboard({ onNavigateToTickets, onViewTicket, refr
       });
       
       if (!response.ok) {
-        throw new Error('Failed to fetch report');
+        const errText = await response.text();
+        throw new Error(`API Error ${response.status}: ${errText}`);
       }
       
       const data = await response.json();
       setReport(data);
     } catch (err) {
       console.error(err);
-      setError('ไม่สามารถดึงข้อมูลรายงานได้');
+      setError(`ไม่สามารถดึงข้อมูลรายงานได้ (${err.message})`);
     } finally {
       setLoading(false);
     }
@@ -84,12 +85,22 @@ export default function AdminDashboard({ onNavigateToTickets, onViewTicket, refr
   const formatTime = (seconds) => {
     if (!seconds || seconds === 0) return <div>0 นาที</div>;
     if (seconds < 60) return <div>&lt; 1 นาที</div>;
-    const h = Math.floor(seconds / 3600);
+    const d = Math.floor(seconds / 86400);
+    const h = Math.floor((seconds % 86400) / 3600);
     const m = Math.floor((seconds % 3600) / 60);
+    
+    if (d > 0) {
+      return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem', alignItems: 'flex-end' }}>
+          <div>{d} วัน {h} ชั่วโมง</div>
+          <div>{m} นาที</div>
+        </div>
+      );
+    }
     
     if (h > 0) {
       return (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem', alignItems: 'flex-end' }}>
           <div>{h} ชั่วโมง</div>
           <div>{m} นาที</div>
         </div>
@@ -117,27 +128,59 @@ export default function AdminDashboard({ onNavigateToTickets, onViewTicket, refr
     
     // Header columns
     const headers = [
-      'Ticket Number',
-      'Title',
-      'Customer',
-      'Priority',
-      'Module',
-      'Status',
-      'Created At',
-      'Resolved At',
-      'Agent'
+      'ticket_number',
+      'title',
+      'description',
+      'priority',
+      'status',
+      'agent_id',
+      'created_at',
+      'updated_at',
+      'module',
+      'resolved_at',
+      'solution',
+      'workaround',
+      'attachment_url',
+      'attachment_name',
+      'resolved_by',
+      'cust_num',
+      'customer_name',
+      'assigned_at',
+      'form_name',
+      'additional_email',
+      'program_type',
+      'issue_type',
+      'contact_name',
+      'request_date',
+      'request_time'
     ];
     
     const rows = ticketsToExport.map(t => [
       t.ticket_number || ('#' + t.id),
-      t.title.replace(/"/g, '""'),
-      (t.user_name || t.customer_name) + ' (' + (t.actual_customer_name || t.customer_cust_num || '-') + ')',
-      t.priority,
-      t.module,
-      t.status === 'open' ? 'รอดำเนินการ' : t.status === 'assigned' ? 'กำลังแก้ไข' : 'ปิดเคสแล้ว',
-      new Date(t.created_at).toLocaleString('th-TH'),
+      (t.title || '').replace(/"/g, '""'),
+      (t.description || '').replace(/"/g, '""'),
+      t.priority || '-',
+      t.status_description || t.status || '-',
+      (t.agent_name || '-').replace(/"/g, '""'),
+      t.created_at ? new Date(t.created_at).toLocaleString('th-TH') : '-',
+      t.updated_at ? new Date(t.updated_at).toLocaleString('th-TH') : '-',
+      t.module || '-',
       t.resolved_at ? new Date(t.resolved_at).toLocaleString('th-TH') : '-',
-      t.agent_name || '-'
+      (t.solution || '').replace(/"/g, '""'),
+      (t.workaround || '').replace(/"/g, '""'),
+      (t.attachment_url || '').replace(/"/g, '""'),
+      (t.attachment_name || '').replace(/"/g, '""'),
+      (t.resolver_name || '-').replace(/"/g, '""'),
+      t.cust_num || '',
+      (t.actual_customer_name || '-').replace(/"/g, '""'),
+      t.assigned_at ? new Date(t.assigned_at).toLocaleString('th-TH') : '-',
+      (t.form_name || '').replace(/"/g, '""'),
+      (t.additional_email || '').replace(/"/g, '""'),
+      t.program_type || '-',
+      t.issue_type || '-',
+      (t.contact_name || '').replace(/"/g, '""'),
+      t.request_date ? new Date(t.request_date).toLocaleDateString('th-TH') : '-',
+      t.request_time || '-'
     ]);
     
     const csvContent = "\uFEFF" + [
@@ -192,30 +235,45 @@ export default function AdminDashboard({ onNavigateToTickets, onViewTicket, refr
                   <th style={{ padding: '0.75rem', color: '#475569', fontWeight: 'bold' }}>หัวข้อ (Title)</th>
                   <th style={{ padding: '0.75rem', color: '#475569', fontWeight: 'bold' }}>ผู้แจ้งเรื่อง (RequestBy)</th>
                   <th style={{ padding: '0.75rem', color: '#475569', fontWeight: 'bold' }}>สถานะ (Status)</th>
-                  <th style={{ padding: '0.75rem', color: '#475569', fontWeight: 'bold' }}>เวลาอัปเดต (Time)</th>
+                  <th style={{ padding: '0.75rem', color: '#475569', fontWeight: 'bold' }}>วันที่รับเคส (RequestDate)</th>
                   <th style={{ padding: '0.75rem', color: '#475569', fontWeight: 'bold' }}>ผู้รับผิดชอบ (Agent)</th>
                 </tr>
               </thead>
               <tbody>
                 {paginatedTickets.map(ticket => (
                   <tr key={ticket.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                    <td 
-                      style={{ padding: '0.75rem', color: '#1e293b', fontWeight: '500', cursor: 'pointer', textDecoration: 'underline', textDecorationColor: 'rgba(0,0,0,0.15)' }}
-                      onClick={() => window.open(`/?ticketId=${ticket.id}`, '_blank')}
-                      title="คลิกเพื่อดูรายละเอียด (เปิดในแท็บใหม่)"
-                    >
-                      {ticket.ticket_number || '#' + ticket.id} {ticket.title}
-                    </td>
-                    <td style={{ padding: '0.75rem', color: '#334155' }}>{ticket.user_name || ticket.customer_name} <span style={{fontSize: '0.85em', color: '#64748b'}}>({ticket.actual_customer_name || ticket.user_cust_num || ticket.customer_cust_num || '-'})</span></td>
                     <td style={{ padding: '0.75rem' }}>
-                      <span className={`badge-status ${ticket.status}`}>
-                        {ticket.status === 'open' ? 'รอดำเนินการ' : ticket.status === 'assigned' ? 'กำลังแก้ไข' : 'ปิดเคสแล้ว'}
+                      <div 
+                        style={{ color: '#3b82f6', fontWeight: '600', cursor: 'pointer', textDecoration: 'underline', textDecorationColor: 'rgba(59, 130, 246, 0.4)', marginBottom: '0.25rem' }}
+                        onClick={() => window.open(`/?ticketId=${ticket.id}`, '_blank')}
+                        title="คลิกเพื่อดูรายละเอียด (เปิดในแท็บใหม่)"
+                      >
+                        {ticket.ticket_number || '#' + ticket.id}
+                      </div>
+                      <div style={{ color: '#1e293b', fontSize: '0.85rem', fontWeight: '400', lineHeight: '1.5' }}>
+                        {ticket.title}
+                      </div>
+                    </td>
+                    <td style={{ padding: '0.75rem', color: '#334155', fontSize: '0.85rem' }}>{ticket.contact_name || ticket.user_name || ticket.customer_name || '-'}</td>
+                    <td style={{ padding: '0.75rem', whiteSpace: 'nowrap' }}>
+                      <span className={`badge ${[null, '', 'open'].includes(ticket.status) ? 'badge-status-open' : ['O', 'I', 'assigned'].includes(ticket.status) ? 'badge-status-assigned' : 'badge-status-resolved'}`} style={{ fontSize: '0.8rem', padding: '0.2rem 0.5rem' }}>
+                        {ticket.status_description || ticket.status || '-'}
                       </span>
                     </td>
-                    <td style={{ padding: '0.75rem', color: '#334155' }}>
-                      {new Date(ticket.status === 'resolved' && ticket.resolved_at ? ticket.resolved_at : ticket.created_at).toLocaleString('th-TH')}
+                    <td style={{ padding: '0.75rem', color: '#334155', fontSize: '0.85rem' }}>
+                      {(() => {
+                        if (ticket.request_date) {
+                          const dateObj = new Date(ticket.request_date);
+                          if (!isNaN(dateObj.getTime())) {
+                            const dateStr = dateObj.toLocaleDateString('th-TH', { year: 'numeric', month: 'short', day: 'numeric' });
+                            const timeStr = ticket.request_time ? ticket.request_time.substring(0, 5) : '';
+                            return `${dateStr} ${timeStr}`.trim();
+                          }
+                        }
+                        return new Date(ticket.created_at).toLocaleString('th-TH', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute:'2-digit' });
+                      })()}
                     </td>
-                    <td style={{ padding: '0.75rem', color: '#475569' }}>{ticket.agent_name || (ticket.status === 'resolved' ? '-' : 'ยังไม่มีเจ้าหน้าที่รับเคส')}</td>
+                    <td style={{ padding: '0.75rem', color: '#475569', fontSize: '0.85rem' }}>{ticket.agent_name || ((['resolved', 'C'].includes(ticket.status)) ? '-' : 'ยังไม่มีเจ้าหน้าที่รับเคส')}</td>
                   </tr>
                 ))}
               </tbody>
@@ -253,13 +311,8 @@ export default function AdminDashboard({ onNavigateToTickets, onViewTicket, refr
     );
   };
 
-  // Calculate dynamic stats for the selected report interval
-  let ticketsForAnalytics = report.tickets || [];
-  if (selectedBlock === 'active') {
-    ticketsForAnalytics = report.activeTickets || [];
-  } else if (selectedBlock === 'closed') {
-    ticketsForAnalytics = report.closedTickets || [];
-  }
+  // Always calculate stats based on the overall report tickets for the analytics section
+  const ticketsForAnalytics = report.tickets || [];
 
   const stats = {
     priority: { low: 0, medium: 0, high: 0 },
@@ -289,20 +342,23 @@ export default function AdminDashboard({ onNavigateToTickets, onViewTicket, refr
 
   // Extract unique years, agents, customers
   const years = Array.from(new Set(allTickets.map(t => {
-    if (!t.created_at) return null;
-    return new Date(t.created_at).getFullYear();
+    const reportDate = t.request_date || t.created_at;
+    if (!reportDate) return null;
+    return new Date(reportDate).getFullYear();
   }).filter(Boolean))).sort((a,b) => b-a);
   if (years.length === 0) years.push(new Date().getFullYear());
 
   const agents = Array.from(new Set(allTickets.map(t => t.agent_name).filter(Boolean))).sort();
-  const uniqueCustomers = Array.from(new Set(allTickets.map(t => t.customer_name || t.customer_cust_num).filter(Boolean))).sort();
+  const uniqueCustomers = Array.from(new Set(allTickets.map(t => t.actual_customer_name || t.customer_cust_num || t.customer_name).filter(Boolean))).sort();
 
   // Filter tickets for active insights view
   const insightFilteredTickets = allTickets.filter(t => {
-    if (!t.created_at) return false;
-    const tDate = new Date(t.created_at);
+    const reportDate = t.request_date || t.created_at;
+    if (!reportDate) return false;
+    const tDate = new Date(reportDate);
     const matchYear = tDate.getFullYear() === Number(insightYear);
-    const matchCust = insightCustomer === 'all' || (t.customer_name === insightCustomer || t.customer_cust_num === insightCustomer);
+    const custIdentifier = t.actual_customer_name || t.customer_cust_num || t.customer_name;
+    const matchCust = insightCustomer === 'all' || custIdentifier === insightCustomer;
     const matchAgent = insightAgent === 'all' || t.agent_name === insightAgent;
     return matchYear && matchCust && matchAgent;
   });
@@ -310,8 +366,9 @@ export default function AdminDashboard({ onNavigateToTickets, onViewTicket, refr
   // Calculate monthly stats for the Line/Area Trend Chart
   const monthlyCounts = Array(12).fill(0);
   insightFilteredTickets.forEach(t => {
-    if (!t.created_at) return;
-    const month = new Date(t.created_at).getMonth();
+    const reportDate = t.request_date || t.created_at;
+    if (!reportDate) return;
+    const month = new Date(reportDate).getMonth();
     monthlyCounts[month]++;
   });
 
@@ -325,10 +382,12 @@ export default function AdminDashboard({ onNavigateToTickets, onViewTicket, refr
     let total = 0;
     
     allTickets.forEach(t => {
-      if (!t.created_at) return;
-      const tDate = new Date(t.created_at);
+      const reportDate = t.request_date || t.created_at;
+      if (!reportDate) return;
+      const tDate = new Date(reportDate);
       if (tDate.getFullYear() === Number(insightYear)) {
-        const isThisCust = t.customer_name === cust || t.customer_cust_num === cust;
+        const custIdentifier = t.actual_customer_name || t.customer_cust_num || t.customer_name;
+        const isThisCust = custIdentifier === cust;
         const isThisAgent = insightAgent === 'all' || t.agent_name === insightAgent;
         if (isThisCust && isThisAgent) {
           const month = tDate.getMonth();
@@ -381,6 +440,14 @@ export default function AdminDashboard({ onNavigateToTickets, onViewTicket, refr
     link.click();
     document.body.removeChild(link);
   };
+
+  const filteredTicketsToExport = report ? (() => {
+    let baseTickets = [];
+    if (selectedBlock === 'total') baseTickets = report.tickets;
+    else if (selectedBlock === 'active') baseTickets = report.activeTickets;
+    else if (selectedBlock === 'closed') baseTickets = report.closedTickets;
+    return getFilteredTickets(baseTickets);
+  })() : [];
 
   return (
     <div className="dashboard-container" style={{ padding: '2rem', maxWidth: '1200px', margin: '0 auto' }}>
@@ -451,7 +518,7 @@ export default function AdminDashboard({ onNavigateToTickets, onViewTicket, refr
             <div 
               className={`glass-card stat-card glow-cyan clickable-card ${selectedBlock === 'total' ? 'selected' : ''}`}
               onClick={() => setSelectedBlock('total')}
-              style={{ padding: '0.75rem 1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+              style={{ borderTop: '3px solid #0ea5e9', padding: '0.75rem 1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
             >
               <h3 style={{ color: '#64748b', fontSize: '0.8rem', marginBottom: '0', fontWeight: 600 }}>📁 จำนวนเคสทั้งหมด</h3>
               <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#0ea5e9' }}>{report.totalCases}</div>
@@ -460,7 +527,7 @@ export default function AdminDashboard({ onNavigateToTickets, onViewTicket, refr
             <div 
               className={`glass-card stat-card glow-purple clickable-card ${selectedBlock === 'active' ? 'selected' : ''}`}
               onClick={() => setSelectedBlock('active')}
-              style={{ padding: '0.75rem 1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+              style={{ borderTop: '3px solid #8b5cf6', padding: '0.75rem 1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
             >
               <h3 style={{ color: '#64748b', fontSize: '0.8rem', marginBottom: '0', fontWeight: 600 }}>⏳ กำลังดำเนินการ</h3>
               <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#8b5cf6' }}>{report.activeCases}</div>
@@ -513,11 +580,11 @@ export default function AdminDashboard({ onNavigateToTickets, onViewTicket, refr
                 </div>
                 <button
                   className="btn btn-export-csv"
-                  onClick={() => handleExportCSV(getFilteredTickets(selectedBlock === 'active' ? report.activeTickets : selectedBlock === 'closed' ? report.closedTickets : report.tickets))}
-                  disabled={getFilteredTickets(selectedBlock === 'active' ? report.activeTickets : selectedBlock === 'closed' ? report.closedTickets : report.tickets).length === 0}
+                  onClick={() => handleExportCSV(filteredTicketsToExport)}
+                  disabled={!filteredTicketsToExport || filteredTicketsToExport.length === 0}
                   style={{ margin: 0, display: 'inline-flex', alignItems: 'center', gap: '0.4rem', fontWeight: 600 }}
                 >
-                  📥 ส่งออกข้อมูล ({getFilteredTickets(selectedBlock === 'active' ? report.activeTickets : selectedBlock === 'closed' ? report.closedTickets : report.tickets).length}) CSV
+                  📥 ส่งออกข้อมูลทั้งหมด ({filteredTicketsToExport ? filteredTicketsToExport.length : 0}) CSV
                 </button>
               </div>
             </div>
@@ -663,7 +730,7 @@ export default function AdminDashboard({ onNavigateToTickets, onViewTicket, refr
               <div>
                 <span style={{ color: '#64748b', fontSize: '0.8rem', fontWeight: 600 }}>⏳ เคสกำลังประสานงาน</span>
                 <div style={{ fontSize: '1.75rem', fontWeight: 'bold', color: '#8b5cf6', marginTop: '0.25rem' }}>
-                  {insightFilteredTickets.filter(t => t.status === 'open' || t.status === 'assigned').length} เคส
+                  {insightFilteredTickets.filter(t => ['open', 'assigned', 'O', 'I'].includes(t.status)).length} เคส
                 </div>
               </div>
               <span style={{ fontSize: '2rem' }}>⏳</span>
@@ -673,7 +740,7 @@ export default function AdminDashboard({ onNavigateToTickets, onViewTicket, refr
               <div>
                 <span style={{ color: '#64748b', fontSize: '0.8rem', fontWeight: 600 }}>🏆 เคสที่แก้ไขเสร็จสิ้น</span>
                 <div style={{ fontSize: '1.75rem', fontWeight: 'bold', color: '#10b981', marginTop: '0.25rem' }}>
-                  {insightFilteredTickets.filter(t => t.status === 'resolved').length} เคส
+                  {insightFilteredTickets.filter(t => ['resolved', 'C'].includes(t.status)).length} เคส
                 </div>
               </div>
               <span style={{ fontSize: '2rem' }}>✅</span>
@@ -684,7 +751,7 @@ export default function AdminDashboard({ onNavigateToTickets, onViewTicket, refr
                 <span style={{ color: '#64748b', fontSize: '0.8rem', fontWeight: 600 }}>🎯 อัตราการปิดเคสสำเร็จ</span>
                 <div style={{ fontSize: '1.75rem', fontWeight: 'bold', color: '#f59e0b', marginTop: '0.25rem' }}>
                   {insightFilteredTickets.length > 0 
-                    ? `${Math.round((insightFilteredTickets.filter(t => t.status === 'resolved').length / insightFilteredTickets.length) * 100)}%`
+                    ? `${Math.round((insightFilteredTickets.filter(t => ['resolved', 'C'].includes(t.status)).length / insightFilteredTickets.length) * 100)}%`
                     : '0%'
                   }
                 </div>
@@ -779,7 +846,7 @@ export default function AdminDashboard({ onNavigateToTickets, onViewTicket, refr
                 ) : (
                   agents.map(agName => {
                     const agTickets = insightFilteredTickets.filter(t => t.agent_name === agName);
-                    const agResolved = agTickets.filter(t => t.status === 'resolved').length;
+                    const agResolved = agTickets.filter(t => ['resolved', 'C'].includes(t.status)).length;
                     const agActive = agTickets.length - agResolved;
                     const pct = agTickets.length > 0 ? Math.round((agResolved / agTickets.length) * 100) : 0;
                     

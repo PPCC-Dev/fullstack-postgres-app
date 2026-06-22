@@ -166,8 +166,6 @@ function ProfileModal({ isOpen, onClose }) {
                   className="glass-input"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  disabled
-                  style={{ opacity: 0.6, cursor: 'not-allowed' }}
                   required
                 />
               </div>

@@ -12,10 +12,12 @@ const ProgramTypeManagement = () => {
 
   // Add form state
   const [newName, setNewName] = useState('');
+  const [newValue, setNewValue] = useState('');
 
   // Edit inline state
   const [editingId, setEditingId] = useState(null);
   const [editingName, setEditingName] = useState('');
+  const [editingValue, setEditingValue] = useState('');
 
   const totalItems = items.length;
   const totalPages = Math.ceil(totalItems / limit);
@@ -54,7 +56,7 @@ const ProgramTypeManagement = () => {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ name: newName.trim() })
+        body: JSON.stringify({ name: newName.trim(), value: newValue.trim() })
       });
 
       if (!response.ok) {
@@ -64,6 +66,7 @@ const ProgramTypeManagement = () => {
 
       await fetchItems();
       setNewName('');
+      setNewValue('');
       setSuccess('เพิ่มประเภทโปรแกรมสำเร็จ');
       setTimeout(() => setSuccess(null), 3000);
     } catch (err) {
@@ -82,7 +85,7 @@ const ProgramTypeManagement = () => {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ name: editingName.trim() })
+        body: JSON.stringify({ name: editingName.trim(), value: editingValue.trim() })
       });
 
       if (!response.ok) {
@@ -93,6 +96,7 @@ const ProgramTypeManagement = () => {
       await fetchItems();
       setEditingId(null);
       setEditingName('');
+      setEditingValue('');
       setSuccess('อัปเดตประเภทโปรแกรมสำเร็จ');
       setTimeout(() => setSuccess(null), 3000);
     } catch (err) {
@@ -124,8 +128,8 @@ const ProgramTypeManagement = () => {
   if (loading) return <div style={{ padding: '2rem', textAlign: 'center' }}>กำลังโหลดข้อมูล...</div>;
 
   return (
-    <div className="config-section">
-      <h3 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+    <div className="glass-card" style={{ padding: '2rem', textAlign: 'left' }}>
+      <h3 style={{ fontSize: '1.25rem', marginBottom: '1.5rem', color: '#0f172a', borderBottom: '1px solid var(--glass-border)', paddingBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
         💻 จัดการประเภทโปรแกรม (Program Types)
       </h3>
 
@@ -136,12 +140,20 @@ const ProgramTypeManagement = () => {
         <input
           type="text"
           className="glass-input"
+          placeholder="รหัส (เช่น S, C, A)"
+          value={newValue}
+          onChange={(e) => setNewValue(e.target.value)}
+          style={{ width: '150px' }}
+        />
+        <input
+          type="text"
+          className="glass-input"
           placeholder="พิมพ์ชื่อประเภทโปรแกรมใหม่ เช่น Standard, Customized"
           value={newName}
           onChange={(e) => setNewName(e.target.value)}
           required
         />
-        <button type="submit" className="btn btn-primary" style={{ whiteSpace: 'nowrap' }}>+ เพิ่ม</button>
+        <button type="submit" className="btn btn-primary" style={{ whiteSpace: 'nowrap' }}>➕ เพิ่มข้อมูล</button>
       </form>
 
       {/* Pagination Controls Top */}
@@ -168,6 +180,18 @@ const ProgramTypeManagement = () => {
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+        <div style={{
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+          padding: '0.5rem 1rem', background: 'rgba(241, 245, 249, 0.5)',
+          borderRadius: '8px', fontWeight: 600, color: '#475569', fontSize: '0.85rem', textTransform: 'uppercase'
+        }}>
+          <div style={{ display: 'flex', gap: '1rem', flexGrow: 1 }}>
+            <span style={{ width: '100px' }}>รหัส (CODE)</span>
+            <span>ชื่อประเภทโปรแกรม (NAME)</span>
+          </div>
+          <span style={{ width: '120px', textAlign: 'center' }}>ACTION</span>
+        </div>
+
         {items.length === 0 ? (
           <p style={{ color: '#64748b' }}>ยังไม่มีข้อมูลประเภทโปรแกรมในระบบ</p>
         ) : (
@@ -178,16 +202,29 @@ const ProgramTypeManagement = () => {
               border: '1px solid var(--glass-border)', borderRadius: '8px'
             }}>
               {editingId === item.id ? (
-                <input
-                  type="text"
-                  className="glass-input"
-                  value={editingName}
-                  onChange={(e) => setEditingName(e.target.value)}
-                  style={{ margin: 0, padding: '0.3rem 0.75rem', flexGrow: 1, marginRight: '1rem' }}
-                  autoFocus
-                />
+                <div style={{ display: 'flex', gap: '0.5rem', flexGrow: 1, marginRight: '1rem' }}>
+                  <input
+                    type="text"
+                    className="glass-input"
+                    value={editingValue}
+                    onChange={(e) => setEditingValue(e.target.value)}
+                    style={{ margin: 0, padding: '0.3rem 0.75rem', width: '100px' }}
+                    placeholder="รหัส"
+                  />
+                  <input
+                    type="text"
+                    className="glass-input"
+                    value={editingName}
+                    onChange={(e) => setEditingName(e.target.value)}
+                    style={{ margin: 0, padding: '0.3rem 0.75rem', flexGrow: 1 }}
+                    autoFocus
+                  />
+                </div>
               ) : (
-                <span style={{ fontWeight: 500, color: '#334155' }}>{item.name}</span>
+                <div style={{ display: 'flex', gap: '1rem', flexGrow: 1, alignItems: 'center' }}>
+                  <span style={{ width: '100px', fontWeight: 600, color: '#3b82f6' }}>{item.value || '-'}</span>
+                  <span style={{ fontWeight: 500, color: '#334155' }}>{item.name}</span>
+                </div>
               )}
 
               <div style={{ display: 'flex', gap: '0.5rem' }}>
@@ -202,7 +239,7 @@ const ProgramTypeManagement = () => {
                   </>
                 ) : (
                   <>
-                    <button className="btn btn-secondary" onClick={() => { setEditingId(item.id); setEditingName(item.name); }} style={{ padding: '0.3rem 0.75rem', fontSize: '0.8rem' }}>
+                    <button className="btn btn-secondary" onClick={() => { setEditingId(item.id); setEditingName(item.name); setEditingValue(item.value || ''); }} style={{ padding: '0.3rem 0.75rem', fontSize: '0.8rem' }}>
                       แก้ไข
                     </button>
                     <button

@@ -115,7 +115,7 @@ export const login = async (req, res) => {
     const token = jwt.sign(
       { id: user.id, name: user.name, email: user.email, role: user.base_role },
       JWT_SECRET,
-      { expiresIn: '30d' }
+      { expiresIn: '12h' } // Shorten token lifespan from 30d to 12h for security
     );
 
     return res.status(200).json({
@@ -179,7 +179,7 @@ export const getAllUsers = async (req, res) => {
 // 5. Update User Data (Agent Only)
 export const updateUser = async (req, res) => {
   const { id } = req.params;
-  let { role, custNum, is_verified } = req.body;
+  let { role, custNum, is_verified, name, email } = req.body;
 
   if (parseInt(id, 10) === req.user.id && role && role.toLowerCase() !== (req.user.user_role || req.user.role).toLowerCase()) {
     return res.status(400).json({ error: 'You cannot change your own role to prevent lockout.' });
@@ -199,10 +199,12 @@ export const updateUser = async (req, res) => {
       `UPDATE users 
        SET role = COALESCE($1, role), 
            cust_num = COALESCE($2, cust_num),
-           is_verified = CASE WHEN $3::boolean IS NULL THEN is_verified ELSE $3::boolean END
+           is_verified = CASE WHEN $3::boolean IS NULL THEN is_verified ELSE $3::boolean END,
+           name = COALESCE($5, name),
+           email = COALESCE($6, email)
        WHERE id = $4 
        RETURNING id, name, email, role, cust_num, is_verified`,
-      [role || null, custNum || null, is_verified !== undefined ? is_verified : null, id]
+      [role || null, custNum || null, is_verified !== undefined ? is_verified : null, id, name || null, email ? email.toLowerCase() : null]
     );
 
     if (result.rows.length === 0) {

@@ -5,6 +5,7 @@ import ProgramTypeManagement from '../components/config/ProgramTypeManagement';
 import IssueTypeManagement from '../components/config/IssueTypeManagement';
 import ModuleProgramManagement from '../components/config/ModuleProgramManagement';
 import SupportStatManagement from '../components/config/SupportStatManagement';
+import CustomerContactManagement from '../components/config/CustomerContactManagement';
 
 export default function AgentDashboard({ onViewTicket, initialTab = 'queue', refreshKey }) {
   const { user, token, API_URL } = useAuth();
@@ -565,13 +566,19 @@ export default function AgentDashboard({ onViewTicket, initialTab = 'queue', ref
     ? tickets 
     : tickets.filter(t => t.cust_num === customerFilter);
 
-  const unassignedTickets = filteredByCustomerTickets.filter(t => t.status === 'open');
-  const myAssignedTickets = filteredByCustomerTickets.filter(t => t.status === 'assigned' && t.agent_id === user.id);
-  const resolvedTickets = filteredByCustomerTickets.filter(t => t.status === 'resolved');
+  const unassignedTickets = filteredByCustomerTickets.filter(t => !t.agent_id && !['C', 'resolved'].includes(t.status));
+  const myAssignedTickets = filteredByCustomerTickets.filter(t => t.agent_id === user.id && !['C', 'resolved'].includes(t.status));
+  const resolvedTickets = filteredByCustomerTickets.filter(t => ['C', 'resolved'].includes(t.status));
   const agents = members.filter(m => (m.role || '').toLowerCase() === 'agent');
   
   // For 'all' tab, apply statusFilter
-  const displayedAllTickets = filteredByCustomerTickets.filter(t => statusFilter === 'all' || t.status === statusFilter);
+  const displayedAllTickets = filteredByCustomerTickets.filter(t => {
+    if (statusFilter === 'all') return true;
+    if (statusFilter === 'open') return !t.agent_id && !['C', 'resolved'].includes(t.status);
+    if (statusFilter === 'assigned') return t.agent_id && !['C', 'resolved'].includes(t.status);
+    if (statusFilter === 'resolved') return ['C', 'resolved'].includes(t.status);
+    return t.status === statusFilter;
+  });
 
   // Pagination calculations for active tab
   let activeList = [];
@@ -584,9 +591,9 @@ export default function AgentDashboard({ onViewTicket, initialTab = 'queue', ref
   const paginatedActiveList = activeList.slice(startIndex, startIndex + itemsPerPage);
 
   // Stats helper variables
-  const openCount = filteredByCustomerTickets.filter(t => t.status === 'open').length;
-  const assignedCount = filteredByCustomerTickets.filter(t => t.status === 'assigned').length;
-  const resolvedCount = filteredByCustomerTickets.filter(t => t.status === 'resolved').length;
+  const openCount = filteredByCustomerTickets.filter(t => !t.agent_id && !['C', 'resolved'].includes(t.status)).length;
+  const assignedCount = filteredByCustomerTickets.filter(t => t.agent_id && !['C', 'resolved'].includes(t.status)).length;
+  const resolvedCount = filteredByCustomerTickets.filter(t => ['C', 'resolved'].includes(t.status)).length;
   const totalCount = filteredByCustomerTickets.length;
 
   // Percentage calculations for dynamic chart bars
@@ -617,7 +624,9 @@ export default function AgentDashboard({ onViewTicket, initialTab = 'queue', ref
 
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem', flexWrap: 'wrap', gap: '1rem' }}>
-        <h1 className="page-title-gradient">ระบบควบคุมการบริการผู้ใช้</h1>
+        <h1 className="page-title-gradient">
+          {activeTab === 'config' ? '⚙️ จัดการระบบ (System Configuration)' : 'Ticket Management'}
+        </h1>
         <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
           {activeTab !== 'config' && (
             <select 
@@ -647,7 +656,7 @@ export default function AgentDashboard({ onViewTicket, initialTab = 'queue', ref
           onClick={() => { setActiveTab('all'); setStatusFilter('open'); }}
         >
           <div className="stat-info">
-            <span className="stat-label">เคสรอลูกเรือเคลม</span>
+            <span className="stat-label">เคสยังไม่ถูกรับ</span>
             <span className="stat-value">{openCount}</span>
           </div>
           <span className="stat-icon">📥</span>
@@ -774,7 +783,7 @@ export default function AgentDashboard({ onViewTicket, initialTab = 'queue', ref
                           </p>
                           <div className="ticket-meta">
                             <span className="meta-item">
-                              👤 ลูกค้า: {ticket.user_name || ticket.customer_name} ({ticket.actual_customer_name || ticket.user_cust_num || ticket.customer_cust_num || '-'})
+                              👤 ลูกค้า: {ticket.contact_name || ticket.user_name || ticket.customer_name || '-'}
                               
                             </span>
                             <span className="meta-item">🗓️ ส่งเคสเมื่อ: {new Date(ticket.created_at).toLocaleString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
@@ -832,7 +841,7 @@ export default function AgentDashboard({ onViewTicket, initialTab = 'queue', ref
                           </p>
                           <div className="ticket-meta">
                             <span className="meta-item">
-                              👤 ลูกค้า: {ticket.user_name || ticket.customer_name} ({ticket.actual_customer_name || ticket.user_cust_num || ticket.customer_cust_num || '-'})
+                              👤 ลูกค้า: {ticket.contact_name || ticket.user_name || ticket.customer_name || '-'} ({ticket.actual_customer_name || ticket.user_cust_num || ticket.customer_cust_num || '-'})
                               
                             </span>
                             <span className="meta-item">🗓️ ส่งเมื่อ: {new Date(ticket.created_at).toLocaleDateString('th-TH')}</span>
@@ -889,7 +898,7 @@ export default function AgentDashboard({ onViewTicket, initialTab = 'queue', ref
                           <h3 className="ticket-title" onClick={() => onViewTicket(ticket.id)}>{ticket.title}</h3>
                           <div className="ticket-meta">
                             <span className="meta-item">
-                              👤 ลูกค้า: {ticket.user_name || ticket.customer_name} ({ticket.actual_customer_name || ticket.user_cust_num || ticket.customer_cust_num || '-'})
+                              👤 ลูกค้า: {ticket.contact_name || ticket.user_name || ticket.customer_name || '-'} ({ticket.actual_customer_name || ticket.user_cust_num || ticket.customer_cust_num || '-'})
                               
                             </span>
                             {ticket.agent_name ? (
@@ -989,7 +998,7 @@ export default function AgentDashboard({ onViewTicket, initialTab = 'queue', ref
                       {agents.map(agent => {
                         const isSelf = agent.id === user.id;
                         const claimedTickets = agent.assigned_tickets || [];
-                        const activeClaimed = claimedTickets.filter(t => t.status !== 'resolved');
+                        const activeClaimed = claimedTickets.filter(t => !['resolved', 'C'].includes(t.status));
 
                         return (
                           <div
@@ -1195,9 +1204,6 @@ export default function AgentDashboard({ onViewTicket, initialTab = 'queue', ref
             {/* CONFIG SECTION RENDERED AS MAIN VIEW FOR ADMINS */}
             {user.role === 'admin' && activeTab === 'config' && (
               <div style={{ marginTop: '0', paddingTop: '0' }}>
-                <h2 style={{ marginBottom: '1.5rem', background: 'linear-gradient(135deg, #a855f7, #00e5ff)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', fontSize: '1.5rem', fontWeight: 700 }}>
-                  ⚙️ จัดการระบบ (System Configuration)
-                </h2>
                 <div style={{ display: 'flex', flexDirection: 'row-reverse', gap: '2rem', alignItems: 'flex-start', overflowX: 'auto', paddingBottom: '1rem', width: '100%' }}>
                   
                   {/* SIDEBAR MENU (RIGHT SIDE) */}
@@ -1216,7 +1222,7 @@ export default function AgentDashboard({ onViewTicket, initialTab = 'queue', ref
                       className={`btn ${configSubTab === 'errortypes' ? 'btn-primary' : 'btn-secondary'}`}
                       style={{ padding: '0.5rem 1rem', borderRadius: '10px', fontSize: '0.9rem', justifyContent: 'flex-start' }}
                     >
-                      ⚠️ ประเภท Error
+                      ⚠️ ประเภท Error (Error Types)
                     </button>
                     <button
                       onClick={() => setConfigSubTab('modules')}
@@ -1231,14 +1237,14 @@ export default function AgentDashboard({ onViewTicket, initialTab = 'queue', ref
                       className={`btn ${configSubTab === 'programtypes' ? 'btn-primary' : 'btn-secondary'}`}
                       style={{ padding: '0.5rem 1rem', borderRadius: '10px', fontSize: '0.9rem', justifyContent: 'flex-start' }}
                     >
-                      💻 ประเภทโปรแกรม
+                      💻 ประเภทโปรแกรม (Program Types)
                     </button>
                     <button
                       onClick={() => setConfigSubTab('issuetypes')}
                       className={`btn ${configSubTab === 'issuetypes' ? 'btn-primary' : 'btn-secondary'}`}
                       style={{ padding: '0.5rem 1rem', borderRadius: '10px', fontSize: '0.9rem', justifyContent: 'flex-start' }}
                     >
-                      🐛 ประเภทปัญหา
+                      🐛 ประเภทปัญหา (Problem Types)
                     </button>
 
                     <button
@@ -1254,6 +1260,13 @@ export default function AgentDashboard({ onViewTicket, initialTab = 'queue', ref
                       style={{ padding: '0.5rem 1rem', borderRadius: '10px', fontSize: '0.9rem', justifyContent: 'flex-start' }}
                     >
                       🤝 ลูกค้า (Customers)
+                    </button>
+                    <button
+                      onClick={() => setConfigSubTab('customercontacts')}
+                      className={`btn ${configSubTab === 'customercontacts' ? 'btn-primary' : 'btn-secondary'}`}
+                      style={{ padding: '0.5rem 1rem', borderRadius: '10px', fontSize: '0.9rem', justifyContent: 'flex-start' }}
+                    >
+                      📋 ข้อมูลผู้ติดต่อ (Contacts)
                     </button>
                     <button
                       onClick={() => setConfigSubTab('supportstats')}
@@ -1471,6 +1484,7 @@ export default function AgentDashboard({ onViewTicket, initialTab = 'queue', ref
                   )}
                   
                   {configSubTab === 'customers' && <CustomerManagement />}
+                  {configSubTab === 'customercontacts' && <CustomerContactManagement />}
                   {configSubTab === 'supportstats' && <SupportStatManagement />}
                   {configSubTab === 'module-programs' && <ModuleProgramManagement initialModuleFilter={moduleProgramFilter} />}
                   {configSubTab === 'members' && (() => {
@@ -1488,6 +1502,9 @@ export default function AgentDashboard({ onViewTicket, initialTab = 'queue', ref
                       </div>
                     ) : (
                       <div className="glass-card" style={{ padding: '1.5rem', overflowX: 'auto', textAlign: 'left' }}>
+                        <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#0f172a', marginBottom: '1.5rem', borderBottom: '1px solid var(--glass-border)', paddingBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          <span style={{ fontSize: '1.5rem' }}>👥</span> จัดการสมาชิก (User Management)
+                        </h2>
                         {/* Pagination Controls Top */}
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', fontSize: '0.9rem' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -1515,7 +1532,6 @@ export default function AgentDashboard({ onViewTicket, initialTab = 'queue', ref
                           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem', color: '#0f172a', minWidth: '700px' }}>
                             <thead>
                               <tr style={{ borderBottom: '2.5px solid var(--glass-border)', color: '#475569', fontWeight: 600, fontSize: '0.82rem', textTransform: 'uppercase', letterSpacing: '0.04em', background: 'rgba(0, 0, 0, 0.015)' }}>
-                                <th style={{ padding: '1rem 0.75rem', textAlign: 'left', whiteSpace: 'nowrap', width: '80px' }}>ID</th>
                                 <th style={{ padding: '1rem 0.75rem', textAlign: 'left', whiteSpace: 'nowrap' }}>Name</th>
                                 <th style={{ padding: '1rem 0.75rem', textAlign: 'left', whiteSpace: 'nowrap' }}>CustNum</th>
                                 <th style={{ padding: '1rem 0.75rem', textAlign: 'left', whiteSpace: 'nowrap' }}>Email</th>
@@ -1535,11 +1551,18 @@ export default function AgentDashboard({ onViewTicket, initialTab = 'queue', ref
                                     onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(99, 102, 241, 0.035)'}
                                     onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                                   >
-                                    <td style={{ padding: '1rem 0.75rem', fontFamily: 'monospace', fontWeight: 500, color: '#475569', whiteSpace: 'nowrap' }}>
-                                      #{String(member.id).padStart(3, '0')}
-                                    </td>
                                     <td style={{ padding: '1rem 0.75rem', fontWeight: 600, color: '#0f172a', whiteSpace: 'nowrap' }}>
-                                      {member.name} {isSelf && <span style={{ color: 'var(--accent-purple)', fontSize: '0.8rem', fontWeight: 600 }}> (คุณ)</span>}
+                                      {editingMemberId === member.id ? (
+                                        <input 
+                                          type="text"
+                                          className="glass-input"
+                                          value={editingMemberData.name || ''}
+                                          onChange={(e) => setEditingMemberData({...editingMemberData, name: e.target.value})}
+                                          style={{ margin: 0, padding: '0.25rem 0.5rem', width: '150px', fontSize: '0.85rem' }}
+                                        />
+                                      ) : (
+                                        <>{member.name} {isSelf && <span style={{ color: 'var(--accent-purple)', fontSize: '0.8rem', fontWeight: 600 }}> (คุณ)</span>}</>
+                                      )}
                                     </td>
                                     <td style={{ padding: '1rem 0.75rem', color: '#475569', whiteSpace: 'nowrap' }}>
                                       {editingMemberId === member.id ? (
@@ -1559,7 +1582,17 @@ export default function AgentDashboard({ onViewTicket, initialTab = 'queue', ref
                                       )}
                                     </td>
                                     <td style={{ padding: '1rem 0.75rem', color: '#475569', whiteSpace: 'nowrap' }}>
-                                      {member.email}
+                                      {editingMemberId === member.id ? (
+                                        <input 
+                                          type="email"
+                                          className="glass-input"
+                                          value={editingMemberData.email || ''}
+                                          onChange={(e) => setEditingMemberData({...editingMemberData, email: e.target.value})}
+                                          style={{ margin: 0, padding: '0.25rem 0.5rem', width: '200px', fontSize: '0.85rem' }}
+                                        />
+                                      ) : (
+                                        member.email
+                                      )}
                                     </td>
                                     <td style={{ padding: '1rem 0.75rem', textAlign: 'center', whiteSpace: 'nowrap' }}>
                                       {editingMemberId === member.id ? (
@@ -1619,7 +1652,9 @@ export default function AgentDashboard({ onViewTicket, initialTab = 'queue', ref
                                             style={{ padding: '0.35rem 0.75rem', fontSize: '0.8rem', borderRadius: '6px', whiteSpace: 'nowrap' }}
                                             onClick={() => {
                                               setEditingMemberId(member.id);
-                                              setEditingMemberData({ position: member.position || '', role: member.role || 'customer', custNum: member.cust_num || '' });
+                                              const currentRole = member.role || 'customer';
+                                              const exactRole = configRoles.find(r => r.name.toLowerCase() === currentRole.toLowerCase())?.name || currentRole;
+                                              setEditingMemberData({ position: member.position || '', role: exactRole, custNum: member.cust_num || '', name: member.name || '', email: member.email || '' });
                                             }}
                                           >
                                             ✏️ แก้ไข
@@ -1710,7 +1745,7 @@ export default function AgentDashboard({ onViewTicket, initialTab = 'queue', ref
                             />
                           </div>
                           <button type="submit" className="btn btn-primary" disabled={configLoading || !newModName.trim()} style={{ padding: '0.75rem 2rem', whiteSpace: 'nowrap' }}>
-                            ➕ เพิ่มระบบงาน
+                            ➕ เพิ่มข้อมูล
                           </button>
                         </form>
 
@@ -1901,7 +1936,7 @@ export default function AgentDashboard({ onViewTicket, initialTab = 'queue', ref
                             <option value="admin">สิทธิ์: Admin</option>
                           </select>
                           <button type="submit" className="btn btn-primary" disabled={configLoading || !newRoleName.trim()} style={{ padding: '0.75rem 2rem', whiteSpace: 'nowrap' }}>
-                            ➕ เพิ่ม Role
+                            ➕ เพิ่มข้อมูล
                           </button>
                         </form>
 

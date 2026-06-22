@@ -12,7 +12,13 @@ export default function CreateTicketModal({ onClose, onSuccess }) {
   const [formName, setFormName] = useState('');
   const [additionalEmail, setAdditionalEmail] = useState('');
   const [priority, setPriority] = useState('medium');
+  const getTodayDate = () => new Date().toLocaleDateString('en-CA'); // 'en-CA' outputs YYYY-MM-DD format based on local time
+  const getCurrentTime = () => new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', hour12: false }); // HH:MM
+
   const [custNum, setCustNum] = useState('');
+  const [contactName, setContactName] = useState('');
+  const [requestDate, setRequestDate] = useState(getTodayDate());
+  const [requestTime, setRequestTime] = useState(getCurrentTime());
   const [attachmentFiles, setAttachmentFiles] = useState([]);
 
   const [formError, setFormError] = useState('');
@@ -22,6 +28,7 @@ export default function CreateTicketModal({ onClose, onSuccess }) {
   const [dbProgramTypes, setDbProgramTypes] = useState([]);
   const [dbIssueTypes, setDbIssueTypes] = useState([]);
   const [dbCustomers, setDbCustomers] = useState([]);
+  const [dbContacts, setDbContacts] = useState([]);
 
   useEffect(() => {
     fetchConfig();
@@ -61,6 +68,16 @@ export default function CreateTicketModal({ onClose, onSuccess }) {
           }
         }
       }
+
+      try {
+        const contactRes = await fetch(`${API_URL}/contacts`, { headers: { 'Authorization': `Bearer ${token}` } });
+        if (contactRes.ok) {
+          const contactData = await contactRes.json();
+          setDbContacts(contactData);
+        }
+      } catch (err) {
+        console.error('Error fetching contacts:', err);
+      }
     } catch (err) {
       console.error('Error fetching config for modal:', err);
     }
@@ -89,7 +106,10 @@ export default function CreateTicketModal({ onClose, onSuccess }) {
       formData.append('priority', priority);
       if (user?.role !== 'customer') {
         formData.append('cust_num', custNum);
+        if (requestDate) formData.append('request_date', requestDate);
+        if (requestTime) formData.append('request_time', requestTime);
       }
+      formData.append('contact_name', contactName);
       
       if (attachmentFiles && attachmentFiles.length > 0) {
         attachmentFiles.forEach(file => {
@@ -181,7 +201,57 @@ export default function CreateTicketModal({ onClose, onSuccess }) {
                 </select>
               </div>
             )}
+            
+            <div className="form-group">
+              <label htmlFor="ticket-contract" style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: '#475569', marginBottom: '0.4rem' }}>ผู้ติดต่อ (Contact Name)</label>
+              <select
+                id="ticket-contract"
+                className="glass-input"
+                value={contactName}
+                onChange={(e) => setContactName(e.target.value)}
+                disabled={formSubmitting}
+                style={{ background: '#f8fafc', cursor: 'pointer', width: '100%' }}
+              >
+                <option value="">-- ไม่ระบุ --</option>
+                {dbContacts
+                  .filter(c => user?.role === 'customer' || c.cust_num === custNum)
+                  .map(c => (
+                  <option key={c.id} value={c.contact_name}>{c.contact_name} ({c.first_name} {c.last_name})</option>
+                ))}
+              </select>
+            </div>
+          </div>
 
+          {user?.role !== 'customer' && (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem', padding: '1rem', background: 'rgba(241, 245, 249, 0.5)', borderRadius: '8px', border: '1px dashed #cbd5e1' }}>
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label htmlFor="ticket-request-date" style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: '#475569', marginBottom: '0.4rem' }}>วันที่แจ้ง (Request Date) <span style={{fontWeight:'normal',color:'#94a3b8'}}>(เว้นว่าง=ปัจจุบัน)</span></label>
+                <input
+                  type="date"
+                  id="ticket-request-date"
+                  className="glass-input"
+                  value={requestDate}
+                  onChange={(e) => setRequestDate(e.target.value)}
+                  disabled={formSubmitting}
+                  style={{ width: '100%', margin: 0 }}
+                />
+              </div>
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label htmlFor="ticket-request-time" style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: '#475569', marginBottom: '0.4rem' }}>เวลาที่แจ้ง (Request Time) <span style={{fontWeight:'normal',color:'#94a3b8'}}>(เว้นว่าง=ปัจจุบัน)</span></label>
+                <input
+                  type="time"
+                  id="ticket-request-time"
+                  className="glass-input"
+                  value={requestTime}
+                  onChange={(e) => setRequestTime(e.target.value)}
+                  disabled={formSubmitting}
+                  style={{ width: '100%', margin: 0 }}
+                />
+              </div>
+            </div>
+          )}
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
             <div className="form-group">
               <label htmlFor="ticket-form-name" style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: '#475569', marginBottom: '0.4rem' }}>FormName</label>
               <input

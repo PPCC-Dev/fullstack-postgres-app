@@ -124,8 +124,8 @@ const IssueTypeManagement = () => {
   if (loading) return <div style={{ padding: '2rem', textAlign: 'center' }}>กำลังโหลดข้อมูล...</div>;
 
   return (
-    <div className="config-section">
-      <h3 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+    <div className="glass-card" style={{ padding: '2rem', textAlign: 'left' }}>
+      <h3 style={{ fontSize: '1.25rem', marginBottom: '1.5rem', color: '#0f172a', borderBottom: '1px solid var(--glass-border)', paddingBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
         🐛 จัดการประเภทปัญหา (Issue Types)
       </h3>
 
@@ -141,7 +141,7 @@ const IssueTypeManagement = () => {
           onChange={(e) => setNewName(e.target.value)}
           required
         />
-        <button type="submit" className="btn btn-primary" style={{ whiteSpace: 'nowrap' }}>+ เพิ่ม</button>
+        <button type="submit" className="btn btn-primary" style={{ whiteSpace: 'nowrap' }}>➕ เพิ่มข้อมูล</button>
       </form>
       {/* Pagination Controls Top */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', fontSize: '0.9rem' }}>

@@ -20,7 +20,7 @@ const createNotification = async (userId, title, message, type, ticketId) => {
 
 // 1. Create a Ticket
 export const createTicket = async (req, res) => {
-  const { title, description, priority, module, form_name, additional_email, program_type, issue_type } = req.body;
+  const { title, description, priority, module, form_name, additional_email, program_type, issue_type, contact_name, request_date, request_time } = req.body;
   let cust_num = req.body.cust_num;
   const customerId = req.user.id;
 
@@ -84,10 +84,10 @@ export const createTicket = async (req, res) => {
     const ticketNumber = `${prefix}${runningNumber.toString().padStart(runningNumLength, '0')}`;
 
     const newTicketResult = await pool.query(
-      `INSERT INTO tickets (ticket_number, title, description, module, program_type, issue_type, form_name, additional_email, priority, status, customer_id, cust_num, attachment_url, attachment_name) 
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'open', $10, $11, $12, $13) 
+      `INSERT INTO tickets (ticket_number, title, description, module, program_type, issue_type, form_name, additional_email, priority, status, customer_id, cust_num, attachment_url, attachment_name, contact_name, request_date, request_time) 
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NULL, $10, $11, $12, $13, $14, COALESCE($15, CURRENT_DATE), COALESCE($16, CURRENT_TIME)) 
        RETURNING *`,
-      [ticketNumber, title, description, ticketModule, ticketProgramType, ticketIssueType, form_name || null, additional_email || null, ticketPriority, customerId, cust_num, attachmentUrl, attachmentName]
+      [ticketNumber, title, description, ticketModule, ticketProgramType, ticketIssueType, form_name || null, additional_email || null, ticketPriority, customerId, cust_num, attachmentUrl, attachmentName, contact_name || null, request_date || null, request_time || null]
     );
 
     const newTicket = newTicketResult.rows[0];
@@ -159,31 +159,39 @@ export const getTickets = async (req, res) => {
       // Agents see all tickets with customer and agent names
       ticketsResult = await pool.query(
         `SELECT t.*, 
+                COALESCE(pt.name, t.program_type) as program_type,
+                m.description as module_desc,
                 c.name as user_name, c.email as customer_email, c.cust_num as user_cust_num,
                 
                 a.name as agent_name,
                 cust.cust_name as actual_customer_name
          FROM tickets t
-         JOIN users c ON t.customer_id = c.id
+         LEFT JOIN users c ON t.customer_id = c.id
          LEFT JOIN users a ON t.agent_id = a.id
          LEFT JOIN customers cust ON t.cust_num = cust.cust_num
+         LEFT JOIN program_types pt ON t.program_type = pt.value
+         LEFT JOIN modules m ON t.module = m.name
          ORDER BY t.updated_at DESC`
       );
     } else {
       // Customers see only their own tickets
       ticketsResult = await pool.query(
         `SELECT t.*, 
+                COALESCE(pt.name, t.program_type) as program_type,
+                m.description as module_desc,
                 c.name as user_name, c.cust_num as user_cust_num,
                 
                 a.name as agent_name,
                 cust.cust_name as actual_customer_name
          FROM tickets t
-         JOIN users c ON t.customer_id = c.id
+         LEFT JOIN users c ON t.customer_id = c.id
          LEFT JOIN users a ON t.agent_id = a.id
          LEFT JOIN customers cust ON t.cust_num = cust.cust_num
-         WHERE t.customer_id = $1
+         LEFT JOIN program_types pt ON t.program_type = pt.value
+         LEFT JOIN modules m ON t.module = m.name
+         WHERE t.customer_id = $1 OR (t.cust_num IS NOT NULL AND t.cust_num = $2)
          ORDER BY t.updated_at DESC`,
-        [id]
+        [id, req.user.cust_num]
       );
     }
 
@@ -202,16 +210,20 @@ export const getTicketById = async (req, res) => {
   try {
     const ticketResult = await pool.query(
       `SELECT t.*, 
+              COALESCE(pt.name, t.program_type) as program_type,
+              m.description as module_desc,
               c.name as user_name, c.email as customer_email, c.cust_num as user_cust_num,
               
               a.name as agent_name,
               r.name as resolver_name,
               cust.cust_name as actual_customer_name
        FROM tickets t
-       JOIN users c ON t.customer_id = c.id
+       LEFT JOIN users c ON t.customer_id = c.id
        LEFT JOIN users a ON t.agent_id = a.id
        LEFT JOIN users r ON t.resolved_by = r.id
        LEFT JOIN customers cust ON t.cust_num = cust.cust_num
+       LEFT JOIN program_types pt ON t.program_type = pt.value
+       LEFT JOIN modules m ON t.module = m.name
        WHERE t.id = $1`,
       [ticketId]
     );
@@ -222,8 +234,8 @@ export const getTicketById = async (req, res) => {
 
     const ticket = ticketResult.rows[0];
 
-    // Authorization: customer can only view their own tickets
-    if (role !== 'agent' && role !== 'admin' && ticket.customer_id !== userId) {
+    // Authorization: customer can only view their own tickets or tickets within their company
+    if (role !== 'agent' && role !== 'admin' && ticket.customer_id !== userId && !(req.user.cust_num && ticket.cust_num === req.user.cust_num)) {
       return res.status(403).json({ error: 'Access denied. You do not own this ticket.' });
     }
 
@@ -261,7 +273,7 @@ export const claimTicket = async (req, res) => {
     // Update ticket with agent_id and set status to 'assigned'
     const updatedResult = await pool.query(
       `UPDATE tickets 
-       SET agent_id = $1, status = 'assigned', updated_at = CURRENT_TIMESTAMP, assigned_at = CURRENT_TIMESTAMP
+       SET agent_id = $1, status = 'O', updated_at = CURRENT_TIMESTAMP, assigned_at = CURRENT_TIMESTAMP
        WHERE id = $2 
        RETURNING *`,
       [agentId, ticketId]
@@ -307,8 +319,8 @@ export const updateTicketStatus = async (req, res) => {
   const ticketId = req.params.id;
   const { status } = req.body;
 
-  const validStatuses = ['open', 'assigned', 'resolved'];
-  if (!validStatuses.includes(status)) {
+  const validStatuses = [null, '', 'O', 'C'];
+  if (status !== null && status !== '' && !validStatuses.includes(status)) {
     return res.status(400).json({ error: 'Invalid status value.' });
   }
 
@@ -323,25 +335,25 @@ export const updateTicketStatus = async (req, res) => {
     // Authorization
     if (role === 'agent' || role === 'admin') {
       // Agents and admins can change status
-      // If setting back to 'open', clear agent_id
+      // If setting back to NULL, clear agent_id
       let query;
       let params;
 
-      if (status === 'open') {
-        query = `UPDATE tickets SET status = $1, agent_id = NULL, assigned_at = NULL, updated_at = CURRENT_TIMESTAMP, resolved_by = NULL WHERE id = $2 RETURNING *`;
-        params = [status, ticketId];
+      if (!status) {
+        query = `UPDATE tickets SET status = NULL, agent_id = NULL, assigned_at = NULL, updated_at = CURRENT_TIMESTAMP, resolved_by = NULL WHERE id = $1 RETURNING *`;
+        params = [ticketId];
       } else {
         // If assigned but no agent, set to current agent
         const newAgentId = ticket.agent_id || userId;
-        const resolvedClause = status === 'resolved' ? `, resolved_at = CURRENT_TIMESTAMP, resolved_by = $4` : '';
+        const resolvedClause = status === 'C' ? `, resolved_at = CURRENT_TIMESTAMP, resolved_by = $4` : '';
         const assignedClause = (!ticket.agent_id && newAgentId) ? `, assigned_at = CURRENT_TIMESTAMP` : '';
         query = `UPDATE tickets SET status = $1, agent_id = $2, updated_at = CURRENT_TIMESTAMP${assignedClause}${resolvedClause} WHERE id = $3 RETURNING *`;
-        params = status === 'resolved' ? [status, newAgentId, ticketId, userId] : [status, newAgentId, ticketId];
+        params = status === 'C' ? [status, newAgentId, ticketId, userId] : [status, newAgentId, ticketId];
       }
 
       const updated = await pool.query(query, params);
       const updatedTicket = updated.rows[0];
-      if (status === 'resolved') {
+      if (status === 'C') {
         try {
           const customerRes = await pool.query('SELECT email FROM users WHERE id = $1', [ticket.customer_id]);
           const customerEmail = customerRes.rows[0]?.email;
@@ -379,7 +391,7 @@ export const updateTicketStatus = async (req, res) => {
       return res.status(200).json(updatedTicket);
     } else {
       // Customers can only mark their own tickets as resolved
-      if (ticket.customer_id !== userId) {
+      if (ticket.customer_id !== userId && !(req.user.cust_num && ticket.cust_num === req.user.cust_num)) {
         return res.status(403).json({ error: 'Access denied. You do not own this ticket.' });
       }
 
@@ -440,6 +452,49 @@ export const updateTicketStatus = async (req, res) => {
   }
 };
 
+export const updateTicketDetails = async (req, res) => {
+  const { id: userId, role } = req.user;
+  const ticketId = req.params.id;
+
+  if (role !== 'agent' && role !== 'admin') {
+    return res.status(403).json({ error: 'Access denied. Only agents and admins can edit ticket details.' });
+  }
+
+  const {
+    title, description, priority, module, program_type, issue_type,
+    form_name, contact_name, additional_email, request_date, request_time
+  } = req.body;
+
+  if (!title || !description || !module) {
+    return res.status(400).json({ error: 'Title, description, and module are required fields.' });
+  }
+
+  try {
+    const updated = await pool.query(
+      `UPDATE tickets 
+       SET title = $1, description = $2, priority = $3, module = $4, program_type = $5, issue_type = $6, 
+           form_name = $7, contact_name = $8, additional_email = $9, request_date = $10, request_time = $11, 
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = $12 
+       RETURNING *`,
+      [
+        title, description, priority, module, program_type, issue_type,
+        form_name || null, contact_name || null, additional_email || null,
+        request_date || null, request_time || null, ticketId
+      ]
+    );
+
+    if (updated.rows.length === 0) {
+      return res.status(404).json({ error: 'Ticket not found.' });
+    }
+
+    return res.status(200).json(updated.rows[0]);
+  } catch (error) {
+    console.error('Error updating ticket details:', error);
+    return res.status(500).json({ error: 'Server error while updating ticket details.' });
+  }
+};
+
 export const addMessage = async (req, res) => {
   const { id: userId, role } = req.user;
   const ticketId = req.params.id;
@@ -464,7 +519,7 @@ export const addMessage = async (req, res) => {
 
     const ticket = checkTicket.rows[0];
 
-    if (role !== 'agent' && role !== 'admin' && ticket.customer_id !== userId) {
+    if (role !== 'agent' && role !== 'admin' && ticket.customer_id !== userId && !(req.user.cust_num && ticket.cust_num === req.user.cust_num)) {
       return res.status(403).json({ error: 'Access denied. You do not have permission to post in this ticket.' });
     }
 
@@ -584,7 +639,7 @@ export const getTicketMessages = async (req, res) => {
 
     const ticket = checkTicket.rows[0];
 
-    if (role !== 'agent' && role !== 'admin' && ticket.customer_id !== userId) {
+    if (role !== 'agent' && role !== 'admin' && ticket.customer_id !== userId && !(req.user.cust_num && ticket.cust_num === req.user.cust_num)) {
       return res.status(403).json({ error: 'Access denied. You do not have access to these messages.' });
     }
 
@@ -1080,12 +1135,16 @@ export const updateTicketSolutionWorkaround = async (req, res) => {
     // Fetch the full ticket details again to return consistent format
     const ticketResult = await pool.query(
       `SELECT t.*, 
+              COALESCE(pt.name, t.program_type) as program_type,
+              m.description as module_desc,
               c.name as customer_name, c.email as customer_email,
               
               a.name as agent_name
        FROM tickets t
-       JOIN users c ON t.customer_id = c.id
+       LEFT JOIN users c ON t.customer_id = c.id
        LEFT JOIN users a ON t.agent_id = a.id
+       LEFT JOIN program_types pt ON t.program_type = pt.value
+       LEFT JOIN modules m ON t.module = m.name
        WHERE t.id = $1`,
       [ticketId]
     );
@@ -1132,7 +1191,7 @@ export const addTicketAttachments = async (req, res) => {
     const ticket = checkTicket.rows[0];
 
     // Authorization: owner customer OR agent/admin
-    if (role !== 'agent' && role !== 'admin' && ticket.customer_id !== userId) {
+    if (role !== 'agent' && role !== 'admin' && ticket.customer_id !== userId && !(req.user.cust_num && ticket.cust_num === req.user.cust_num)) {
       return res.status(403).json({ error: 'Access denied. You do not have permission to modify this ticket.' });
     }
 
@@ -1152,12 +1211,16 @@ export const addTicketAttachments = async (req, res) => {
     // Fetch and return the updated ticket details
     const ticketResult = await pool.query(
       `SELECT t.*, 
+              COALESCE(pt.name, t.program_type) as program_type,
+              m.description as module_desc,
               c.name as customer_name, c.email as customer_email,
               
               a.name as agent_name
        FROM tickets t
-       JOIN users c ON t.customer_id = c.id
+       LEFT JOIN users c ON t.customer_id = c.id
        LEFT JOIN users a ON t.agent_id = a.id
+       LEFT JOIN program_types pt ON t.program_type = pt.value
+       LEFT JOIN modules m ON t.module = m.name
        WHERE t.id = $1`,
       [ticketId]
     );
@@ -1191,7 +1254,7 @@ export const deleteTicketAttachment = async (req, res) => {
     const ticket = checkTicket.rows[0];
 
     // Authorization: owner customer OR agent/admin
-    if (role !== 'agent' && role !== 'admin' && ticket.customer_id !== userId) {
+    if (role !== 'agent' && role !== 'admin' && ticket.customer_id !== userId && !(req.user.cust_num && ticket.cust_num === req.user.cust_num)) {
       return res.status(403).json({ error: 'Access denied. You do not have permission to modify this ticket.' });
     }
 
@@ -1229,12 +1292,16 @@ export const deleteTicketAttachment = async (req, res) => {
     // Fetch and return the updated ticket details
     const ticketResult = await pool.query(
       `SELECT t.*, 
+              COALESCE(pt.name, t.program_type) as program_type,
+              m.description as module_desc,
               c.name as customer_name, c.email as customer_email,
               
               a.name as agent_name
        FROM tickets t
-       JOIN users c ON t.customer_id = c.id
+       LEFT JOIN users c ON t.customer_id = c.id
        LEFT JOIN users a ON t.agent_id = a.id
+       LEFT JOIN program_types pt ON t.program_type = pt.value
+       LEFT JOIN modules m ON t.module = m.name
        WHERE t.id = $1`,
       [ticketId]
     );
@@ -1275,12 +1342,12 @@ export const getIssueTypes = async (req, res) => {
 };
 
 export const createProgramType = async (req, res) => {
-  const { name } = req.body;
+  const { name, value } = req.body;
   if (!name) return res.status(400).json({ error: 'Program type name is required' });
   try {
     const result = await pool.query(
-      'INSERT INTO program_types (name) VALUES ($1) RETURNING *',
-      [name]
+      'INSERT INTO program_types (name, value) VALUES ($1, $2) RETURNING *',
+      [name, value || null]
     );
     return res.status(201).json(result.rows[0]);
   } catch (error) {
@@ -1294,12 +1361,12 @@ export const createProgramType = async (req, res) => {
 
 export const updateProgramType = async (req, res) => {
   const { id } = req.params;
-  const { name } = req.body;
+  const { name, value } = req.body;
   if (!name) return res.status(400).json({ error: 'Program type name is required' });
   try {
     const result = await pool.query(
-      'UPDATE program_types SET name = $1 WHERE id = $2 RETURNING *',
-      [name, id]
+      'UPDATE program_types SET name = $1, value = $2 WHERE id = $3 RETURNING *',
+      [name, value || null, id]
     );
     if (result.rows.length === 0) return res.status(404).json({ error: 'Program type not found' });
     return res.status(200).json(result.rows[0]);
@@ -1376,7 +1443,7 @@ export const deleteIssueType = async (req, res) => {
 
 export const getSupportStats = async (req, res) => {
   try {
-    const result = await pool.query('SELECT * FROM support_stats ORDER BY stat ASC');
+    const result = await pool.query('SELECT * FROM support_stats ORDER BY seq ASC, stat ASC');
     return res.status(200).json(result.rows);
   } catch (error) {
     console.error('Error fetching support stats:', error);
@@ -1385,7 +1452,7 @@ export const getSupportStats = async (req, res) => {
 };
 
 export const createSupportStat = async (req, res) => {
-  const { stat, description, remark } = req.body;
+  const { stat, description, remark, seq } = req.body;
   if (!stat || !description) {
     return res.status(400).json({ error: 'stat and description are required.' });
   }
@@ -1397,8 +1464,8 @@ export const createSupportStat = async (req, res) => {
     }
 
     const result = await pool.query(
-      'INSERT INTO support_stats (stat, description, remark) VALUES ($1, $2, $3) RETURNING *',
-      [stat.trim(), description.trim(), remark ? remark.trim() : '']
+      'INSERT INTO support_stats (stat, description, remark, seq) VALUES ($1, $2, $3, $4) RETURNING *',
+      [stat.trim(), description.trim(), remark ? remark.trim() : '', seq !== undefined && seq !== '' ? parseInt(seq, 10) : 9999]
     );
     return res.status(201).json(result.rows[0]);
   } catch (error) {
@@ -1409,7 +1476,7 @@ export const createSupportStat = async (req, res) => {
 
 export const updateSupportStat = async (req, res) => {
   const { stat } = req.params;
-  const { description, remark } = req.body;
+  const { description, remark, seq } = req.body;
   
   if (!description) {
     return res.status(400).json({ error: 'description is required.' });
@@ -1417,8 +1484,8 @@ export const updateSupportStat = async (req, res) => {
 
   try {
     const result = await pool.query(
-      'UPDATE support_stats SET description = $1, remark = $2 WHERE stat = $3 RETURNING *',
-      [description.trim(), remark ? remark.trim() : '', stat]
+      'UPDATE support_stats SET description = $1, remark = $2, seq = $3 WHERE stat = $4 RETURNING *',
+      [description.trim(), remark ? remark.trim() : '', seq !== undefined && seq !== '' ? parseInt(seq, 10) : 9999, stat]
     );
 
     if (result.rows.length === 0) {

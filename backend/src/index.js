@@ -1,11 +1,14 @@
 import express from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
 import dotenv from 'dotenv';
 import authRoutes from './routes/authRoutes.js';
 import ticketRoutes from './routes/ticketRoutes.js';
 import reportRoutes from './routes/reportRoutes.js';
 import customerRoutes from './routes/customerRoutes.js';
 import notificationRoutes from './routes/notificationRoutes.js';
+import customerContactRoutes from './routes/customerContactRoutes.js';
 import pool from './config/db.js';
 
 dotenv.config(); // Reload env changes
@@ -14,12 +17,35 @@ const app = express();
 const PORT = process.env.PORT || 5001;
 
 // Middlewares
+app.use(helmet()); // Set security HTTP headers
+app.use(helmet.crossOriginResourcePolicy({ policy: "cross-origin" })); // Allow images to load cross-origin
+
 app.use(cors({
-  origin: '*', // Allow all origins for dev simplicity, can restrict in production
+  origin: process.env.CLIENT_URL || 'http://localhost:5173', // Restrict CORS to client URL
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
+
+// Rate limiting
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 1000, // Limit each IP to 1000 requests per 15 minutes
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many requests from this IP, please try again after 15 minutes' }
+});
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 50, // Limit each IP to 50 auth requests per 15 minutes
+  message: { error: 'Too many authentication attempts, please try again after 15 minutes' }
+});
+
 app.use(express.json());
+
+// Apply rate limiters
+app.use('/api/', apiLimiter);
+app.use('/api/auth/', authLimiter);
 
 // Main Root endpoint for status check
 app.get('/api/health', (req, res) => {
@@ -39,6 +65,7 @@ app.use('/api/tickets', ticketRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/customers', customerRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/contacts', customerContactRoutes);
 
 // 404 Route handler
 app.use((req, res, next) => {

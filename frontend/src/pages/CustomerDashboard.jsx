@@ -231,11 +231,11 @@ export default function CustomerDashboard({ onViewTicket, refreshKey }) {
                     <div className="ticket-header">
                       <span className="ticket-id">{ticket.ticket_number || '#' + String(ticket.id).padStart(3, '0')}</span>
                       <span className={`badge ${
-                        ticket.status === 'open' ? 'badge-status-open' :
-                        ticket.status === 'assigned' ? 'badge-status-assigned' : 'badge-status-resolved'
+                        [null, '', 'open'].includes(ticket.status) ? 'badge-status-open' :
+                        ['O', 'I', 'assigned'].includes(ticket.status) ? 'badge-status-assigned' : 'badge-status-resolved'
                       }`}>
-                        {ticket.status === 'open' ? '• รอยืนยัน' :
-                         ticket.status === 'assigned' ? '• กำลังดูแล' : '• เสร็จสิ้น'}
+                        {[null, '', 'open'].includes(ticket.status) ? '• รอดำเนินการ' : 
+                        ['O', 'I', 'assigned'].includes(ticket.status) ? '• กำลังแก้ไข' : '• ปิดเคสแล้ว'}
                       </span>
 
                       <span className="badge badge-module">🧩 {ticket.module}</span>

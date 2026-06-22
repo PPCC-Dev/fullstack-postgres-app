@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
+import EditTicketModal from '../components/EditTicketModal';
 
 export default function TicketDetail({ ticketId, onBack }) {
   const { user, token, API_URL } = useAuth();
@@ -19,6 +20,8 @@ export default function TicketDetail({ ticketId, onBack }) {
   const [isInternal, setIsInternal] = useState(false);
   const [previewImage, setPreviewImage] = useState(null);
   const [previewIndex, setPreviewIndex] = useState(-1);
+  const [supportStats, setSupportStats] = useState([]);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   const messagesEndRef = useRef(null);
 
@@ -61,8 +64,23 @@ export default function TicketDetail({ ticketId, onBack }) {
     }
   };
 
+  const fetchSupportStats = async () => {
+    try {
+      const res = await fetch(`${API_URL}/tickets/config/support-stats`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setSupportStats(data);
+      }
+    } catch (err) {
+      console.error('Error fetching support stats:', err);
+    }
+  };
+
   useEffect(() => {
     fetchTicketDetails();
+    fetchSupportStats();
 
     // Auto polling every 4 seconds to fetch new chat messages (free real-time feeling!)
     const interval = setInterval(() => {
@@ -71,6 +89,23 @@ export default function TicketDetail({ ticketId, onBack }) {
 
     return () => clearInterval(interval);
   }, [ticketId, token]);
+
+  // Handle Escape key to close image preview modal
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape' && previewImage) {
+        setPreviewImage(null);
+      }
+    };
+    
+    if (previewImage) {
+      window.addEventListener('keydown', handleKeyDown);
+    }
+    
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [previewImage]);
 
   const fetchMessagesOnly = async () => {
     try {
@@ -340,32 +375,11 @@ export default function TicketDetail({ ticketId, onBack }) {
                 <span>คุณเป็นผู้ดูแลเคสนี้ (เคสนี้ฉันเป็นคนดูแล ⚡)</span>
               </div>
             )}
-            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.75rem', marginBottom: '0.75rem' }}>
-              <span className={`badge ${
-                ticket.status === 'open' ? 'badge-status-open' :
-                ticket.status === 'assigned' ? 'badge-status-assigned' : 'badge-status-resolved'
-              }`}>
-                {ticket.status === 'open' ? '• รอยืนยัน' :
-                 ticket.status === 'assigned' ? '• กำลังดูแล' : '• เสร็จสิ้น'}
-              </span>
 
-              <span className="badge badge-module">🧩 {ticket.module}</span>
-              <span className="badge" style={{ background: 'rgba(236, 72, 153, 0.1)', color: '#ec4899', border: '1px solid rgba(236, 72, 153, 0.2)' }}>
-                💻 {ticket.program_type || 'Standard'}
-              </span>
-              <span className="badge" style={{ background: 'rgba(245, 158, 11, 0.1)', color: '#d97706', border: '1px solid rgba(245, 158, 11, 0.2)' }}>
-                🐛 {ticket.issue_type || 'Technical'}
-              </span>
-              <span className={`badge badge-priority-${ticket.priority}`}>
-                {ticket.priority === 'low' ? 'ต่ำ' :
-                 ticket.priority === 'medium' ? 'ปานกลาง' : 'สูง !!'}
-              </span>
+            <div style={{ fontSize: '1rem', color: '#004bb5', marginBottom: '0.25rem', fontWeight: 600 }}>
+              {ticket.ticket_number || '#' + String(ticket.id).padStart(3, '0')}
             </div>
-
-            <div style={{ fontSize: '1rem', color: '#64748b', marginBottom: '0.25rem', fontFamily: 'monospace' }}>
-              LogId: {ticket.ticket_number || '#' + String(ticket.id).padStart(3, '0')}
-            </div>
-            <h2 style={{ fontSize: '1.8rem', color: '#0f172a', marginBottom: '0.5rem' }}>
+            <h2 style={{ fontSize: '1.3rem', color: '#0f172a', marginBottom: '0.5rem', lineHeight: '1.4' }}>
               {ticket.title}
             </h2>
             {ticket.user_cust_num && (
@@ -650,10 +664,10 @@ export default function TicketDetail({ ticketId, onBack }) {
               การจัดการเคสช่วยเหลือ
             </h3>
 
-            {/* AGENT CONTROLS */}
-            {user.role === 'agent' && (
+            {/* AGENT & ADMIN CONTROLS */}
+            {(user.role === 'agent' || user.role === 'admin') && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '0.5rem' }}>
-                {ticket.status === 'open' ? (
+                {[null, '', 'open', 'O'].includes(ticket.status) && !ticket.agent_id ? (
                   <button className="btn btn-primary" style={{ width: '100%' }} onClick={handleClaimTicket} disabled={updatingStatus}>
                     📥 เคลมเคสรับเคสดูแล
                   </button>
@@ -665,17 +679,27 @@ export default function TicketDetail({ ticketId, onBack }) {
                         className="glass-input"
                         value={ticket.status}
                         onChange={(e) => handleStatusChange(e.target.value)}
-                        disabled={updatingStatus}
-                        style={{ background: 'var(--glass-bg)', cursor: 'pointer' }}
+                        disabled={updatingStatus || ['C', 'resolved'].includes(ticket.status)}
+                        style={{ 
+                          background: ['C', 'resolved'].includes(ticket.status) ? 'rgba(0,0,0,0.05)' : 'var(--glass-bg)', 
+                          cursor: ['C', 'resolved'].includes(ticket.status) ? 'not-allowed' : 'pointer',
+                          opacity: ['C', 'resolved'].includes(ticket.status) ? 0.7 : 1
+                        }}
                       >
-                        <option value="assigned">⚡ กำลังประสานงาน (Assigned)</option>
-                        <option value="resolved">✅ แก้ไขเสร็จสิ้น (Resolved)</option>
-                        <option value="open">❌ คืนกลับเข้าคิวว่าง (Open)</option>
+                        {supportStats.length > 0 ? supportStats.map(s => (
+                          <option key={s.stat} value={s.stat}>{s.description}</option>
+                        )) : (
+                          <>
+                            <option value="I">⚡ กำลังประสานงาน (Assigned)</option>
+                            <option value="C">✅ แก้ไขเสร็จสิ้น (Resolved)</option>
+                            <option value="O">❌ คืนกลับเข้าคิวว่าง (Open)</option>
+                          </>
+                        )}
                       </select>
                     </div>
 
-                    {ticket.status === 'assigned' && (
-                      <button className="btn btn-primary" style={{ width: '100%', marginTop: '0.5rem' }} onClick={() => handleStatusChange('resolved')} disabled={updatingStatus}>
+                    {['assigned', 'I'].includes(ticket.status) && (
+                      <button className="btn btn-primary" style={{ width: '100%', marginTop: '0.5rem' }} onClick={() => handleStatusChange('C')} disabled={updatingStatus}>
                         ✅ แก้ไขสำเร็จ (Resolve Case)
                       </button>
                     )}
@@ -695,10 +719,10 @@ export default function TicketDetail({ ticketId, onBack }) {
             )}
 
             {/* REOPEN IF RESOLVED */}
-            {ticket.status === 'resolved' && (
+            {['C', 'resolved'].includes(ticket.status) && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '0.5rem', textAlign: 'center' }}>
                 <span style={{ fontSize: '0.8rem', color: 'var(--status-resolved)', fontWeight: 600 }}>🏆 เคสนี้ถูกทำเครื่องหมายว่าปิดงานแล้ว</span>
-                <button className="btn btn-secondary" style={{ width: '100%' }} onClick={() => handleStatusChange(user.role === 'agent' ? 'assigned' : 'open')} disabled={updatingStatus}>
+                <button className="btn btn-secondary" style={{ width: '100%' }} onClick={() => handleStatusChange('O')} disabled={updatingStatus}>
                   🔓 เปิดเคสขึ้นมาใหม่อีกครั้ง
                 </button>
               </div>
@@ -707,12 +731,23 @@ export default function TicketDetail({ ticketId, onBack }) {
 
           {/* Ticket Info details list */}
           <div className="glass-card sidebar-panel">
-            <h3 style={{ fontSize: '1.1rem', marginBottom: '0.5rem', color: '#0f172a' }}>รายละเอียดทั่วไป</h3>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+              <h3 style={{ fontSize: '1.1rem', margin: 0, color: '#0f172a' }}>รายละเอียดทั่วไป</h3>
+              {(user.role === 'agent' || user.role === 'admin') && (
+                <button 
+                  className="btn btn-secondary" 
+                  onClick={() => setIsEditModalOpen(true)}
+                  style={{ padding: '0.25rem 0.75rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
+                >
+                  ✏️ แก้ไขข้อมูลเคส
+                </button>
+              )}
+            </div>
 
             <div className="sidebar-section">
               <div className="detail-row">
                 <span className="detail-label">Module:</span>
-                <span className="detail-val" style={{ color: 'var(--accent-cyan)' }}>{ticket.module}</span>
+                <span className="detail-val" style={{ color: 'var(--accent-cyan)' }}>{ticket.module_desc || ticket.module}</span>
               </div>
               <div className="detail-row">
                 <span className="detail-label">ProgramType:</span>
@@ -734,11 +769,11 @@ export default function TicketDetail({ ticketId, onBack }) {
               </div>
               <div className="detail-row">
                 <span className="detail-label">RequestBy:</span>
-                <span className="detail-val">{ticket.user_name}</span>
+                <span className="detail-val">{ticket.contact_name || ticket.user_name || '-'}</span>
               </div>
               <div className="detail-row">
-                <span className="detail-label">RequestByEmail:</span>
-                <span className="detail-val" style={{ fontSize: '0.8rem' }}>{ticket.customer_email}</span>
+                <span className="detail-label">AdditionalEmail:</span>
+                <span className="detail-val">{ticket.additional_email || '-'}</span>
               </div>
 
 
@@ -753,13 +788,23 @@ export default function TicketDetail({ ticketId, onBack }) {
               <hr style={{ border: 'none', borderBottom: '1px solid var(--glass-border)' }} />
               <div className="detail-row" style={{ fontSize: '0.8rem' }}>
                 <span className="detail-label">RequestDate:</span>
-                <span className="detail-val">{new Date(ticket.created_at).toLocaleString('th-TH')}</span>
+                <span className="detail-val">
+                  {ticket.request_date 
+                    ? `${new Date(ticket.request_date).toLocaleDateString('th-TH')} ${ticket.request_time ? ticket.request_time.substring(0, 5) : ''}`
+                    : new Date(ticket.created_at).toLocaleString('th-TH')}
+                </span>
               </div>
               <div className="detail-row" style={{ fontSize: '0.8rem' }}>
                 <span className="detail-label">UpdateDate:</span>
                 <span className="detail-val">{new Date(ticket.updated_at).toLocaleString('th-TH')}</span>
               </div>
-              {ticket.resolved_at && (
+              {ticket.projected_date && (
+                <div className="detail-row" style={{ fontSize: '0.8rem', color: '#0284c7' }}>
+                  <span className="detail-label">ProjectedDate:</span>
+                  <span className="detail-val">{new Date(ticket.projected_date).toLocaleDateString('th-TH')}</span>
+                </div>
+              )}
+              {ticket.resolved_at && ['C', 'resolved'].includes(ticket.status) && (
                 <>
                   <div className="detail-row" style={{ fontSize: '0.8rem', color: 'var(--priority-high)' }}>
                     <span className="detail-label">ผู้ปิดเคส:</span>
@@ -832,6 +877,17 @@ export default function TicketDetail({ ticketId, onBack }) {
             })()}
           </div>
         </div>
+      )}
+
+      {isEditModalOpen && (
+        <EditTicketModal
+          ticket={ticket}
+          onClose={() => setIsEditModalOpen(false)}
+          onSuccess={() => {
+            setIsEditModalOpen(false);
+            fetchTicketDetails();
+          }}
+        />
       )}
     </div>
   );
