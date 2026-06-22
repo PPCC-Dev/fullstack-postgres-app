@@ -106,6 +106,23 @@ const getFormattedTicketEmailHTML = (ticket, type, headline, typeLabel, messageU
     priorityStyle = 'background-color: #f1f5f9; color: #475569; border: 1px solid #cbd5e1;';
   }
 
+  let statusLabel = '🔵 รอดำเนินการ (Open)';
+  let statusStyle = 'background-color: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd;';
+  if (['assigned', 'in_progress', 'i', 'o'].includes((ticket.status || '').toLowerCase())) {
+    statusLabel = '🟡 กำลังดำเนินการ (In Progress)';
+    statusStyle = 'background-color: #fef3c7; color: #d97706; border: 1px solid #fcd34d;';
+  } else if (['resolved', 'closed', 'c'].includes((ticket.status || '').toLowerCase())) {
+    statusLabel = '🟢 ปิดงานเสร็จสิ้น (Resolved)';
+    statusStyle = 'background-color: #dcfce7; color: #15803d; border: 1px solid #86efac;';
+  }
+
+  let agentName = ticket.agent_name || 'ยังไม่มีผู้รับผิดชอบ';
+
+  let displayDescription = ticket.description ? ticket.description.replace(/\n/g, '<br/>') : '-';
+  if (messageUpdateHtml && ticket.description && ticket.description.length > 250) {
+    displayDescription = ticket.description.substring(0, 250).replace(/\n/g, '<br/>') + '... <br/><br/><i style="color:#64748b;">(รายละเอียดปัญหามีความยาวมาก สามารถอ่านฉบับเต็มได้ในระบบ)</i>';
+  }
+
   let resolutionBlock = '';
   if (ticket.solution && ticket.solution.trim()) {
     resolutionBlock = `
@@ -191,6 +208,9 @@ const getFormattedTicketEmailHTML = (ticket, type, headline, typeLabel, messageU
                 </tr>
               </table>
 
+              <!-- Chat Update Details (MOVED UP) -->
+              ${messageUpdateHtml}
+
               <!-- Metadata Grid -->
               <h3 style="color: #0f172a; font-size: 0.95rem; font-weight: 700; margin: 0 0 12px 0; border-bottom: 1px dashed #cbd5e1; padding-bottom: 6px; text-transform: uppercase; letter-spacing: 0.02em;">
                 📌 ข้อมูลเชิงรายละเอียด (Ticket Metadata)
@@ -213,11 +233,17 @@ const getFormattedTicketEmailHTML = (ticket, type, headline, typeLabel, messageU
                   </td>
                 </tr>
                 
-                <!-- Row 2: Module -->
+                <!-- Row 2: Module & Status -->
                 <tr>
                   <td width="50%" valign="top" style="padding-bottom: 12px; padding-right: 10px;">
                     <span style="display: block; font-size: 0.75rem; font-weight: 700; color: #64748b; text-transform: uppercase; margin-bottom: 2px;">🧩 ระบบงาน (Module)</span>
                     <span style="font-size: 0.9rem; font-weight: 600; color: #1e293b;">${ticket.moduleDescription || ticket.module || '-'}</span>
+                  </td>
+                  <td width="50%" valign="top" style="padding-bottom: 12px;">
+                    <span style="display: block; font-size: 0.75rem; font-weight: 700; color: #64748b; text-transform: uppercase; margin-bottom: 2px;">📌 สถานะปัจจุบัน (Status)</span>
+                    <span style="display: inline-block; font-size: 0.8rem; font-weight: 700; padding: 2px 8px; border-radius: 12px; ${statusStyle}">
+                      ${statusLabel}
+                    </span>
                   </td>
                 </tr>
 
@@ -233,14 +259,15 @@ const getFormattedTicketEmailHTML = (ticket, type, headline, typeLabel, messageU
                   </td>
                 </tr>
 
-                <!-- Row 4: Form Name -->
+                <!-- Row 4: Form Name & Assigned Agent -->
                 <tr>
                   <td width="50%" valign="top" style="padding-bottom: 12px; padding-right: 10px;">
                     <span style="display: block; font-size: 0.75rem; font-weight: 700; color: #64748b; text-transform: uppercase; margin-bottom: 2px;">🖥️ หน้าจอทำงาน (Form Name)</span>
                     <span style="font-size: 0.9rem; font-weight: 600; color: #1e293b;">${ticket.form_name || '-'}</span>
                   </td>
                   <td width="50%" valign="top" style="padding-bottom: 12px;">
-                    &nbsp;
+                    <span style="display: block; font-size: 0.75rem; font-weight: 700; color: #64748b; text-transform: uppercase; margin-bottom: 2px;">👤 ผู้รับผิดชอบ (Assigned To)</span>
+                    <span style="font-size: 0.9rem; font-weight: 600; color: #1e293b;">${agentName}</span>
                   </td>
                 </tr>
               </table>
@@ -252,13 +279,10 @@ const getFormattedTicketEmailHTML = (ticket, type, headline, typeLabel, messageU
               <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; margin-bottom: 24px; text-align: left;">
                 <tr>
                   <td style="padding: 16px; font-size: 0.88rem; color: #334155; line-height: 1.6;">
-                    ${ticket.description ? ticket.description.replace(/\n/g, '<br/>') : '-'}
+                    ${displayDescription}
                   </td>
                 </tr>
               </table>
-
-              <!-- Chat Update Details -->
-              ${messageUpdateHtml}
 
               <!-- Resolution & Workaround Blocks -->
               ${resolutionBlock}
