@@ -191,7 +191,22 @@ export default function CustomerDashboard({ onViewTicket, refreshKey }) {
               </h2>
               <span style={{ fontSize: '0.85rem', color: '#64748b' }}>อัปเดตแบบเรียลไทม์</span>
             </div>
-            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <span style={{ fontSize: '0.85rem', color: '#475569' }}>แสดงหน้าละ:</span>
+                <select 
+                  className="glass-input" 
+                  value={itemsPerPage} 
+                  onChange={(e) => { setItemsPerPage(Number(e.target.value)); setCurrentPage(1); }}
+                  style={{ margin: 0, padding: '0.35rem 1rem', fontSize: '0.85rem', width: 'auto', minWidth: '80px', borderRadius: '8px' }}
+                >
+                  <option value={20}>20</option>
+                  <option value={30}>30</option>
+                  <option value={40}>40</option>
+                  <option value={50}>50</option>
+                  <option value={100}>100</option>
+                </select>
+              </div>
               <select 
                 className="glass-input" 
                 value={ownerFilter} 
@@ -299,22 +314,7 @@ export default function CustomerDashboard({ onViewTicket, refreshKey }) {
                 </div>
               ))}
               
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1.5rem', flexWrap: 'wrap', gap: '1rem', padding: '1rem', background: 'rgba(255,255,255,0.5)', borderRadius: '12px', border: '1px solid var(--glass-border)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <span style={{ fontSize: '0.85rem', color: '#475569' }}>แสดงหน้าละ:</span>
-                  <select 
-                    className="glass-input" 
-                    value={itemsPerPage} 
-                    onChange={(e) => { setItemsPerPage(Number(e.target.value)); setCurrentPage(1); }}
-                    style={{ margin: 0, padding: '0.25rem 1rem', fontSize: '0.85rem', width: 'auto', minWidth: '80px', borderRadius: '6px' }}
-                  >
-                    <option value={20}>20</option>
-                    <option value={30}>30</option>
-                    <option value={40}>40</option>
-                    <option value={50}>50</option>
-                    <option value={100}>100</option>
-                  </select>
-                </div>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginTop: '1.5rem', flexWrap: 'wrap', gap: '1rem', padding: '1rem', background: 'rgba(255,255,255,0.5)', borderRadius: '12px', border: '1px solid var(--glass-border)' }}>
                 
                 {totalPages > 1 && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
