@@ -768,7 +768,7 @@ export default function TicketDetail({ ticketId, onBack }) {
                 </span>
               </div>
               <div className="detail-row">
-                <span className="detail-label">RequestBy:</span>
+                <span className="detail-label">ผู้เปิดเคส:</span>
                 <span className="detail-val">{ticket.contact_name || ticket.user_name || '-'}</span>
               </div>
               <div className="detail-row">

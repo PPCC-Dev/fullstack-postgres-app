@@ -8,6 +8,7 @@ export default function CustomerDashboard({ onViewTicket, refreshKey }) {
   const [error, setError] = useState('');
   const [statusFilter, setStatusFilter] = useState('active'); // Add status filter
   const [sortOption, setSortOption] = useState('date_desc'); // Add sort option
+  const [ownerFilter, setOwnerFilter] = useState('all'); // 'all' or 'me'
   
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -15,7 +16,7 @@ export default function CustomerDashboard({ onViewTicket, refreshKey }) {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [statusFilter, sortOption]);
+  }, [statusFilter, sortOption, ownerFilter]);
   // Dynamic configuration lists
 
   const [dbModules, setDbModules] = useState([]);
@@ -102,17 +103,23 @@ export default function CustomerDashboard({ onViewTicket, refreshKey }) {
     }
   }, [token, refreshKey]);
 
-  // Stat calculations
-  const totalTickets = tickets.length;
-  const activeTickets = tickets.filter(t => t.status === 'open' || t.status === 'assigned').length;
-  const resolvedTickets = tickets.filter(t => t.status === 'resolved').length;
+  // Filter by owner first
+  const ownedFilteredTickets = tickets.filter(t => {
+    if (ownerFilter === 'me') return t.customer_id === user?.id;
+    return true;
+  });
+
+  // Stat calculations based on owner filter
+  const totalTickets = ownedFilteredTickets.length;
+  const activeTickets = ownedFilteredTickets.filter(t => [null, '', 'open', 'O', 'I', 'assigned'].includes(t.status)).length;
+  const resolvedTickets = ownedFilteredTickets.filter(t => ['C', 'resolved'].includes(t.status)).length;
 
   // Filter and sort tickets for display
-  const displayedTickets = tickets
+  const displayedTickets = ownedFilteredTickets
     .filter(t => {
       if (statusFilter === 'all') return true;
-      if (statusFilter === 'active') return t.status === 'open' || t.status === 'assigned';
-      if (statusFilter === 'resolved') return t.status === 'resolved';
+      if (statusFilter === 'active') return [null, '', 'open', 'O', 'I', 'assigned'].includes(t.status);
+      if (statusFilter === 'resolved') return ['C', 'resolved'].includes(t.status);
       return true;
     })
     .sort((a, b) => {
@@ -167,7 +174,7 @@ export default function CustomerDashboard({ onViewTicket, refreshKey }) {
           onClick={() => setStatusFilter('all')}
         >
           <div className="stat-info">
-            <span className="stat-label">เคสทั้งหมดของคุณ</span>
+            <span className="stat-label">{ownerFilter === 'me' ? 'เคสทั้งหมดที่ฉันเปิด' : 'เคสทั้งหมดของบริษัท'}</span>
             <span className="stat-value">{totalTickets}</span>
           </div>
           <span className="stat-icon">📂</span>
@@ -180,11 +187,20 @@ export default function CustomerDashboard({ onViewTicket, refreshKey }) {
           <div className="section-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', borderBottom: '1px solid var(--glass-border)', paddingBottom: '1rem', marginBottom: '1.5rem' }}>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: '1rem', flexWrap: 'wrap' }}>
               <h2 className="section-title" style={{ margin: 0, borderBottom: 'none', paddingBottom: 0, marginBottom: 0 }}>
-                <span>📋</span> รายการคำขอช่วยเหลือของคุณ
+                <span>📋</span> {ownerFilter === 'me' ? 'รายการคำขอช่วยเหลือที่คุณเปิด' : 'รายการคำขอช่วยเหลือของบริษัท'}
               </h2>
               <span style={{ fontSize: '0.85rem', color: '#64748b' }}>อัปเดตแบบเรียลไทม์</span>
             </div>
-            <div>
+            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+              <select 
+                className="glass-input" 
+                value={ownerFilter} 
+                onChange={(e) => setOwnerFilter(e.target.value)}
+                style={{ margin: 0, padding: '0.35rem 1rem', fontSize: '0.85rem', width: 'auto', minWidth: '180px', borderRadius: '8px' }}
+              >
+                <option value="all">ดูเคสทั้งหมดของบริษัท</option>
+                <option value="me">ดูเฉพาะเคสที่ฉันเป็นคนเปิด</option>
+              </select>
               <select 
                 className="glass-input" 
                 value={sortOption} 
@@ -231,11 +247,11 @@ export default function CustomerDashboard({ onViewTicket, refreshKey }) {
                     <div className="ticket-header">
                       <span className="ticket-id">{ticket.ticket_number || '#' + String(ticket.id).padStart(3, '0')}</span>
                       <span className={`badge ${
-                        [null, '', 'open'].includes(ticket.status) ? 'badge-status-open' :
-                        ['O', 'I', 'assigned'].includes(ticket.status) ? 'badge-status-assigned' : 'badge-status-resolved'
+                        [null, '', 'open', 'O'].includes(ticket.status) ? 'badge-status-open' :
+                        ['I', 'assigned'].includes(ticket.status) ? 'badge-status-assigned' : 'badge-status-resolved'
                       }`}>
-                        {[null, '', 'open'].includes(ticket.status) ? '• รอดำเนินการ' : 
-                        ['O', 'I', 'assigned'].includes(ticket.status) ? '• กำลังแก้ไข' : '• ปิดเคสแล้ว'}
+                        {[null, '', 'open', 'O'].includes(ticket.status) ? '• รอดำเนินการ' : 
+                        ['I', 'assigned'].includes(ticket.status) ? '• กำลังแก้ไข' : '• ปิดเคสแล้ว'}
                       </span>
 
                       <span className="badge badge-module">🧩 {ticket.module}</span>
@@ -257,6 +273,9 @@ export default function CustomerDashboard({ onViewTicket, refreshKey }) {
                     <div className="ticket-meta">
                       <span className="meta-item">
                         🗓️ ส่งเมื่อ: {new Date(ticket.created_at).toLocaleDateString('th-TH', { hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                      <span className="meta-item" style={{ color: '#0ea5e9' }}>
+                        👤 เปิดเคสโดย: {ticket.contact_name || ticket.user_name || 'ไม่ระบุ'}
                       </span>
                       {ticket.agent_name ? (
                         <span className="meta-item" style={{ color: 'var(--accent-purple)', fontWeight: 500 }}>
@@ -337,13 +356,13 @@ export default function CustomerDashboard({ onViewTicket, refreshKey }) {
             <hr style={{ border: 'none', borderBottom: '1px solid var(--glass-border)', margin: '0.5rem 0' }} />
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.8rem', color: '#334155' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <span style={{ color: 'var(--status-open)' }}>●</span> รอยืนยัน = เคสเข้าระบบ รอเจ้าหน้าที่มากดรับ
+                <span style={{ color: 'var(--status-open)' }}>●</span> รอดำเนินการ = เคสเข้าระบบ รอเจ้าหน้าที่มากดรับ
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <span style={{ color: 'var(--status-assigned)' }}>●</span> กำลังดูแล = มีเจ้าหน้าที่รับเรื่องดูแลแล้ว
+                <span style={{ color: 'var(--status-assigned)' }}>●</span> กำลังแก้ไข = มีเจ้าหน้าที่รับเรื่องดูแลแล้ว
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <span style={{ color: 'var(--status-resolved)' }}>●</span> เสร็จสิ้น = แก้ไขปัญหาเรียบร้อย
+                <span style={{ color: 'var(--status-resolved)' }}>●</span> ปิดเคสแล้ว = แก้ไขปัญหาเรียบร้อย
               </div>
             </div>
           </div>

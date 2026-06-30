@@ -576,7 +576,7 @@ function MainAppContent() {
 
       {/* Footer */}
       <footer style={{ padding: '2rem 1rem', borderTop: '1px solid var(--glass-border)', textAlign: 'center', color: '#475569', fontSize: '0.85rem', marginTop: 'auto' }}>
-        <span>© 2026 PPCC Care. Built with Premium Glassmorphism UI & PostgreSQL API.</span>
+        <span>© 2026 PPCC Care. All rights reserved by PremierProfessional Consulting Co., Ltd.</span>
       </footer>
     </div>
   );
