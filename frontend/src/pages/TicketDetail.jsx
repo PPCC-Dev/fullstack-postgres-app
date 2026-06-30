@@ -619,40 +619,46 @@ export default function TicketDetail({ ticketId, onBack }) {
             </div>
 
             {/* Input area */}
-            <div className="chat-input-area">
-              {(user.role === 'agent' || user.role === 'admin') && (
-                <div className="segment-control">
-                  <button
-                    type="button"
-                    className={`segment-btn public ${!isInternal ? 'active' : ''}`}
-                    onClick={() => setIsInternal(false)}
-                  >
-                    💬 ส่งหาลูกค้า (Public)
+            {['C', 'resolved'].includes(ticket.status) ? (
+              <div className="chat-input-area" style={{ textAlign: 'center', padding: '1.5rem', background: 'rgba(0,0,0,0.02)', color: '#64748b', borderRadius: '12px', marginTop: '1rem', border: '1px solid var(--glass-border)' }}>
+                🔒 เคสนี้ถูกปิดแล้ว ไม่สามารถส่งข้อความเพิ่มเติมได้ หากพบปัญหาอีกครั้งโปรดเปิดเคสใหม่
+              </div>
+            ) : (
+              <div className="chat-input-area">
+                {(user.role === 'agent' || user.role === 'admin') && (
+                  <div className="segment-control">
+                    <button
+                      type="button"
+                      className={`segment-btn public ${!isInternal ? 'active' : ''}`}
+                      onClick={() => setIsInternal(false)}
+                    >
+                      💬 ส่งหาลูกค้า (Public)
+                    </button>
+                    <button
+                      type="button"
+                      className={`segment-btn internal ${isInternal ? 'active' : ''}`}
+                      onClick={() => setIsInternal(true)}
+                    >
+                      🔒 โน้ตภายใน (Internal Note)
+                    </button>
+                  </div>
+                )}
+                <form onSubmit={handleSendMessage} className="chat-form">
+                  <input
+                    type="text"
+                    className="glass-input"
+                    placeholder="พิมพ์ข้อความตอบกลับเพื่อประสานงานช่วยเหลือ..."
+                    value={newMessageText}
+                    onChange={(e) => setNewMessageText(e.target.value)}
+                    disabled={sending}
+                    required
+                  />
+                  <button type="submit" className="btn btn-primary" style={{ padding: '0 1.5rem' }} disabled={sending}>
+                    {sending ? 'ส่ง...' : 'ส่ง'}
                   </button>
-                  <button
-                    type="button"
-                    className={`segment-btn internal ${isInternal ? 'active' : ''}`}
-                    onClick={() => setIsInternal(true)}
-                  >
-                    🔒 โน้ตภายใน (Internal Note)
-                  </button>
-                </div>
-              )}
-              <form onSubmit={handleSendMessage} className="chat-form">
-                <input
-                  type="text"
-                  className="glass-input"
-                  placeholder={ticket.status === 'resolved' ? "เคสได้รับการแก้ไขเสร็จสิ้นแล้ว แต่คุณยังสามารถพิมพ์แจ้งต่อได้หากปัญหายังค้างคา" : "พิมพ์ข้อความตอบกลับเพื่อประสานงานช่วยเหลือ..."}
-                  value={newMessageText}
-                  onChange={(e) => setNewMessageText(e.target.value)}
-                  disabled={sending}
-                  required
-                />
-                <button type="submit" className="btn btn-primary" style={{ padding: '0 1.5rem' }} disabled={sending}>
-                  {sending ? 'ส่ง...' : 'ส่ง'}
-                </button>
-              </form>
-            </div>
+                </form>
+              </div>
+            )}
           </div>
         </div>
 
