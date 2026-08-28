@@ -71,6 +71,7 @@ export default function SystemGuideModal({ isOpen, onClose }) {
             { id: 'frontend', label: '🎨 Frontend Structure' },
             { id: 'menus', label: '📌 เมนูหลัก (Header)' },
             { id: 'pages', label: '📄 หน้าจอต่างๆ (Pages)' },
+            { id: 'config', label: '⚙️ ตั้งค่าระบบ (Master Config)' },
             { id: 'workflow', label: '🛠️ Workflow การทำงาน' },
           ].map(tab => {
             const isActive = activeTab === tab.id;
@@ -353,7 +354,70 @@ export default function SystemGuideModal({ isOpen, onClose }) {
             </div>
           )}
 
-          {/* TAB 6: WORKFLOW */}
+          {/* TAB 6: MASTER CONFIGURATION */}
+          {activeTab === 'config' && (
+            <div>
+              <h3 style={{ color: '#38bdf8', marginTop: 0, fontSize: '1.15rem' }}>⚙️ การตั้งค่าโครงสร้างระบบ (System Configuration / Master Data)</h3>
+              <p style={{ color: '#e2e8f0' }}>
+                ส่วนงาน <strong style={{ color: '#a855f7' }}>⚙️ จัดการระบบ (Master Data Configuration)</strong> สำหรับผู้ดูแลระบบ (Admin) และเจ้าหน้าที่ (Agent) ใช้ในการกำหนดโครงสร้างข้อมูลหลักและเงื่อนไขทั้งหมดของระบบทิคเก็ต PPCC Care
+              </p>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1rem', marginTop: '1rem' }}>
+                
+                <div style={{ background: 'rgba(30, 41, 59, 0.7)', padding: '1.25rem', borderRadius: '12px', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
+                  <h4 style={{ color: '#fbbf24', margin: '0 0 0.5rem 0', fontSize: '1rem' }}>🐛 1. ประเภทข้อผิดพลาด (Error Types)</h4>
+                  <p style={{ fontSize: '0.85rem', color: '#cbd5e1', margin: 0 }}>
+                    รหัสและคำอธิบายประเภทข้อผิดพลาดทางเทคนิค เช่น <code>ERR001</code>, <code>ERR002</code> พร้อมหมายเหตุ สำหรับให้ Agent เลือกระบุสาเหตุเมื่อปิดเคส
+                  </p>
+                </div>
+
+                <div style={{ background: 'rgba(30, 41, 59, 0.7)', padding: '1.25rem', borderRadius: '12px', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
+                  <h4 style={{ color: '#38bdf8', margin: '0 0 0.5rem 0', fontSize: '1rem' }}>🧩 2. โมดูลระบบ (Modules)</h4>
+                  <p style={{ fontSize: '0.85rem', color: '#cbd5e1', margin: 0 }}>
+                    การจัดการรายชื่อโมดูลงานระบบ เช่น <code>AP</code> (Account Payable), <code>AR</code>, <code>GL</code>, <code>Stock</code> ให้เลือกเมื่อแจ้งเคส
+                  </p>
+                </div>
+
+                <div style={{ background: 'rgba(30, 41, 59, 0.7)', padding: '1.25rem', borderRadius: '12px', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
+                  <h4 style={{ color: '#ec4899', margin: '0 0 0.5rem 0', fontSize: '1rem' }}>💻 3. ประเภทโปรแกรม (Program Types)</h4>
+                  <p style={{ fontSize: '0.85rem', color: '#cbd5e1', margin: 0 }}>
+                    กำหนดประเภทซอฟต์แวร์หรือแพลตฟอร์มที่พบปัญหา เช่น <code>Web Application</code>, <code>Desktop App</code>, <code>Mobile App</code>
+                  </p>
+                </div>
+
+                <div style={{ background: 'rgba(30, 41, 59, 0.7)', padding: '1.25rem', borderRadius: '12px', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
+                  <h4 style={{ color: '#34d399', margin: '0 0 0.5rem 0', fontSize: '1rem' }}>🏷️ 4. ประเภทปัญหา (Issue Types)</h4>
+                  <p style={{ fontSize: '0.85rem', color: '#cbd5e1', margin: 0 }}>
+                    จำแนกลักษณะเคสปัญหา เช่น <code>Bug/Defect</code>, <code>User Error</code>, <code>New Feature Request</code>, <code>Data Adjustment</code>
+                  </p>
+                </div>
+
+                <div style={{ background: 'rgba(30, 41, 59, 0.7)', padding: '1.25rem', borderRadius: '12px', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
+                  <h4 style={{ color: '#c084fc', margin: '0 0 0.5rem 0', fontSize: '1rem' }}>💼 5. ตำแหน่งงาน (Positions) & สิทธิ์ (Roles)</h4>
+                  <p style={{ fontSize: '0.85rem', color: '#cbd5e1', margin: 0 }}>
+                    กำหนดตำแหน่งของบุคลากร และสิทธิ์ระดับการใช้งานระบบ (Customer / Agent / Admin) สำหรับควบคุมการเข้าถึงเมนูต่างๆ
+                  </p>
+                </div>
+
+                <div style={{ background: 'rgba(30, 41, 59, 0.7)', padding: '1.25rem', borderRadius: '12px', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
+                  <h4 style={{ color: '#38bdf8', margin: '0 0 0.5rem 0', fontSize: '1rem' }}>📊 6. สถานะงานช่วยเหลือ (Support Stats)</h4>
+                  <p style={{ fontSize: '0.85rem', color: '#cbd5e1', margin: 0 }}>
+                    การจัดการรหัสสถานะงานทิคเก็ต เช่น <code>O</code> (Ongoing/กำลังดำเนินการ), <code>C</code> (Closed/เสร็จสิ้น)
+                  </p>
+                </div>
+
+                <div style={{ background: 'rgba(30, 41, 59, 0.7)', padding: '1.25rem', borderRadius: '12px', border: '1px solid rgba(255, 255, 255, 0.1)', gridColumn: '1 / -1' }}>
+                  <h4 style={{ color: '#a5b4fc', margin: '0 0 0.5rem 0', fontSize: '1rem' }}>🔗 7. ผูกสัมพันธ์โมดูลกับโปรแกรม (Module Programs Mapping)</h4>
+                  <p style={{ fontSize: '0.85rem', color: '#cbd5e1', margin: 0 }}>
+                    กำหนดการแมปความสัมพันธ์ว่า Module ใดเชื่อมโยงกับ Program Type ใดบ้าง ช่วยให้ฟอร์มสร้างทิคเก็ตแสดงตัวเลือกย่อยสัมพันธ์กันอย่างแม่นยำ
+                  </p>
+                </div>
+
+              </div>
+            </div>
+          )}
+
+          {/* TAB 7: WORKFLOW */}
           {activeTab === 'workflow' && (
             <div>
               <h3 style={{ color: '#38bdf8', marginTop: 0, fontSize: '1.15rem' }}>🛠️ ลำดับขั้นตอนการทำงานหลัก (Core Workflows Sequence Diagram)</h3>
