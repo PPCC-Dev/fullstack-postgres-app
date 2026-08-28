@@ -202,7 +202,10 @@ export default function TicketDetail({ ticketId, onBack }) {
         }
       });
 
-      if (!response.ok) throw new Error('Failed to claim ticket.');
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error || 'Failed to claim ticket.');
+      }
       
       // Reload details
       await fetchTicketDetails();

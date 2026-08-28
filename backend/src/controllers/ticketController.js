@@ -266,7 +266,7 @@ export const claimTicket = async (req, res) => {
     }
 
     const ticket = checkTicket.rows[0];
-    if (ticket.status !== 'open') {
+    if (ticket.agent_id || ['C', 'resolved'].includes(ticket.status)) {
       return res.status(400).json({ error: 'Ticket is already assigned or resolved.' });
     }
 
