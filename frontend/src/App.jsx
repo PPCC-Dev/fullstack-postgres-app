@@ -9,6 +9,7 @@ import AdminDashboard from './pages/AdminDashboard';
 import TicketDetail from './pages/TicketDetail';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
+import SystemGuideModal from './components/SystemGuideModal';
 
 function ProfileModal({ isOpen, onClose }) {
   const { user, updateProfile, changePassword } = useAuth();
@@ -324,8 +325,9 @@ function MainAppContent() {
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const bellRef = useRef(null);
   
-  // Global Ticket Modal
+  // Global Ticket & Guide Modals
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isGuideModalOpen, setIsGuideModalOpen] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
 
   const fetchNotifications = async () => {
@@ -457,14 +459,22 @@ function MainAppContent() {
                  >
                    {adminView === 'dashboard' ? '📂 จัดการทิคเก็ต' : '📊 ดูรายงานสรุป'}
                  </button>
-                 <button 
-                   className="btn btn-primary" 
-                   onClick={() => { handleSetTicketId(null); setAdminView('config'); }}
-                   style={{ padding: '0.4rem 1rem', fontSize: '0.85rem', marginRight: '0.5rem' }}
-                 >
-                   ⚙️ จัดการระบบ
-                 </button>
-                 </>
+                  <button 
+                    className="btn btn-primary" 
+                    onClick={() => { handleSetTicketId(null); setAdminView('config'); }}
+                    style={{ padding: '0.4rem 1rem', fontSize: '0.85rem', marginRight: '0.5rem' }}
+                  >
+                    ⚙️ จัดการระบบ
+                  </button>
+                  <button 
+                    className="btn btn-secondary" 
+                    onClick={() => setIsGuideModalOpen(true)}
+                    style={{ padding: '0.4rem 1rem', fontSize: '0.85rem', marginRight: '0.5rem', background: 'rgba(99, 102, 241, 0.15)', border: '1px solid rgba(99, 102, 241, 0.35)', color: '#818cf8', fontWeight: 600 }}
+                    title="ดูคู่มือโครงสร้างระบบและการทำงาน"
+                  >
+                    📘 คู่มือระบบ
+                  </button>
+                  </>
             )}
 
             <button 
@@ -571,6 +581,14 @@ function MainAppContent() {
             setIsModalOpen(false);
             setRefreshKey(prev => prev + 1);
           }}
+        />
+      )}
+
+      {/* Admin System Guide Modal */}
+      {user.role === 'admin' && (
+        <SystemGuideModal 
+          isOpen={isGuideModalOpen} 
+          onClose={() => setIsGuideModalOpen(false)} 
         />
       )}
 
