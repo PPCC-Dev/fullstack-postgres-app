@@ -56,7 +56,14 @@ export default function SystemGuideModal({ isOpen, onClose }) {
         </div>
 
         {/* Sub Navigation Tabs */}
-        <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.25rem', overflowX: 'auto', paddingBottom: '0.5rem' }}>
+        <div style={{ 
+          display: 'flex', 
+          flexWrap: 'wrap',
+          gap: '0.6rem', 
+          marginBottom: '1.25rem', 
+          paddingBottom: '0.75rem',
+          borderBottom: '1px solid rgba(255, 255, 255, 0.1)'
+        }}>
           {[
             { id: 'overview', label: '🏗️ ภาพรวมระบบ' },
             { id: 'backend', label: '⚙️ Backend & DB' },
@@ -64,27 +71,46 @@ export default function SystemGuideModal({ isOpen, onClose }) {
             { id: 'menus', label: '📌 เมนูหลัก (Header)' },
             { id: 'pages', label: '📄 หน้าจอต่างๆ (Pages)' },
             { id: 'workflow', label: '🛠️ Workflow การทำงาน' },
-          ].map(tab => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              style={{
-                padding: '0.55rem 1.1rem',
-                borderRadius: '10px',
-                border: activeTab === tab.id ? 'none' : '1px solid rgba(255, 255, 255, 0.12)',
-                background: activeTab === tab.id ? 'linear-gradient(135deg, #6366f1, #0284c7)' : 'rgba(30, 41, 59, 0.7)',
-                color: activeTab === tab.id ? '#ffffff' : '#cbd5e1',
-                cursor: 'pointer',
-                fontWeight: activeTab === tab.id ? 700 : 500,
-                fontSize: '0.85rem',
-                whiteSpace: 'nowrap',
-                transition: 'all 0.2s',
-                boxShadow: activeTab === tab.id ? '0 4px 12px rgba(99, 102, 241, 0.35)' : 'none'
-              }}
-            >
-              {tab.label}
-            </button>
-          ))}
+          ].map(tab => {
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                style={{
+                  padding: '0.55rem 1.15rem',
+                  borderRadius: '10px',
+                  border: isActive ? '1px solid rgba(56, 189, 248, 0.6)' : '1px solid rgba(255, 255, 255, 0.18)',
+                  background: isActive 
+                    ? 'linear-gradient(135deg, #6366f1, #0284c7)' 
+                    : 'rgba(30, 41, 59, 0.85)',
+                  color: isActive ? '#ffffff' : '#f1f5f9',
+                  cursor: 'pointer',
+                  fontWeight: isActive ? 700 : 600,
+                  fontSize: '0.85rem',
+                  whiteSpace: 'nowrap',
+                  transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+                  boxShadow: isActive ? '0 4px 14px rgba(99, 102, 241, 0.45)' : '0 2px 6px rgba(0, 0, 0, 0.2)'
+                }}
+                onMouseEnter={(e) => {
+                  if (!isActive) {
+                    e.currentTarget.style.background = 'rgba(51, 65, 85, 0.95)';
+                    e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.35)';
+                    e.currentTarget.style.color = '#ffffff';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!isActive) {
+                    e.currentTarget.style.background = 'rgba(30, 41, 59, 0.85)';
+                    e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.18)';
+                    e.currentTarget.style.color = '#f1f5f9';
+                  }
+                }}
+              >
+                {tab.label}
+              </button>
+            );
+          })}
         </div>
 
         {/* Modal Scrollable Content */}
