@@ -396,17 +396,17 @@ export default function SystemGuideModal({ isOpen, onClose }) {
 
               <div style={{ background: 'rgba(30, 41, 59, 0.7)', padding: '1.25rem', borderRadius: '12px', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
                 <h4 style={{ color: '#a5b4fc', margin: '0 0 0.75rem 0', fontSize: '1rem' }}>📋 สรุป 9 ขั้นตอนตาม Diagram:</h4>
-                <ol style={{ paddingLeft: '1.25rem', margin: 0, lineHeight: 1.8, color: '#e2e8f0' }}>
-                  <li style={{ marginBottom: '0.4rem' }}><strong style={{ color: '#38bdf8' }}>1. สร้างทิคเก็ตใหม่ (Create Ticket)</strong>: ลูกค้าส่งคำขอสร้างทิคเก็ตใหม่ไปยัง Server & DB</li>
-                  <li style={{ marginBottom: '0.4rem' }}><strong style={{ color: '#34d399' }}>2. ส่งอีเมลยืนยันการรับเรื่องให้ลูกค้า</strong>: ระบบส่งอีเมลอัตโนมัติแจ้งยืนยันรับเรื่องผ่าน SMTP</li>
-                  <li style={{ marginBottom: '0.4rem' }}><strong style={{ color: '#c084fc' }}>3. แสดงทิคเก็ตใหม่ในหน้า Queue & ส่งแจ้งเตือน In-App Bell</strong>: ระบบแจ้งเตือนเจ้าหน้าที่ Agent</li>
-                  <li style={{ marginBottom: '0.4rem' }}><strong style={{ color: '#38bdf8' }}>4. กดรับเรื่อง (Claim Ticket)</strong>: เจ้าหน้าที่กดรับเรื่องดูแลเคส</li>
-                  <li style={{ marginBottom: '0.4rem' }}><strong style={{ color: '#34d399' }}>5. ส่งอีเมลแจ้งลูกค้าว่ามี Agent รับดูแลแล้ว</strong>: แจ้งลูกค้าว่าเจ้าหน้าที่กำลังดำเนินการ</li>
-                  <li style={{ marginBottom: '0.4rem' }}><strong style={{ color: '#fbbf24' }}>6. [Loop สนทนา] ส่งข้อความเพิ่มเติม / แนบรูป</strong>: ลูกค้าส่งรายละเอียดเพิ่มเติมเข้าสู่ระบบ</li>
-                  <li style={{ marginBottom: '0.4rem' }}><strong style={{ color: '#fbbf24' }}>7. [Loop สนทนา] ส่งข้อความตอบกลับ / บันทึก Internal Note</strong>: เจ้าหน้าที่ตอบกลับหรือโน้ตภายใน</li>
-                  <li style={{ marginBottom: '0.4rem' }}><strong style={{ color: '#f43f5e' }}>8. บันทึก Solution/Workaround & ปิดเคส (Resolve)</strong>: เจ้าหน้าที่บันทึกวิธีแก้ไขและปิดเคส</li>
-                  <li><strong style={{ color: '#34d399' }}>9. ส่งอีเมลแจ้งปิดเคสเสร็จสิ้นให้ลูกค้า</strong>: ระบบส่งอีเมลสรุปการปิดเคสเสร็จสมบูรณ์ให้ลูกค้า</li>
-                </ol>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', color: '#e2e8f0' }}>
+                  <div><strong style={{ color: '#38bdf8' }}>1. สร้างทิคเก็ตใหม่ (Create Ticket)</strong>: ลูกค้าส่งคำขอสร้างทิคเก็ตใหม่ไปยัง Server & DB</div>
+                  <div><strong style={{ color: '#34d399' }}>2. ส่งอีเมลยืนยันการรับเรื่องให้ลูกค้า</strong>: ระบบส่งอีเมลอัตโนมัติแจ้งยืนยันรับเรื่องผ่าน SMTP</div>
+                  <div><strong style={{ color: '#c084fc' }}>3. แสดงทิคเก็ตใหม่ในหน้า Queue & ส่งแจ้งเตือน In-App Bell</strong>: ระบบแจ้งเตือนเจ้าหน้าที่ Agent</div>
+                  <div><strong style={{ color: '#38bdf8' }}>4. กดรับเรื่อง (Claim Ticket)</strong>: เจ้าหน้าที่กดรับเรื่องดูแลเคส</div>
+                  <div><strong style={{ color: '#34d399' }}>5. ส่งอีเมลแจ้งลูกค้าว่ามี Agent รับดูแลแล้ว</strong>: แจ้งลูกค้าว่าเจ้าหน้าที่กำลังดำเนินการ</div>
+                  <div><strong style={{ color: '#fbbf24' }}>6. [Loop สนทนา] ส่งข้อความเพิ่มเติม / แนบรูป</strong>: ลูกค้าส่งรายละเอียดเพิ่มเติมเข้าสู่ระบบ</div>
+                  <div><strong style={{ color: '#fbbf24' }}>7. [Loop สนทนา] ส่งข้อความตอบกลับ / บันทึก Internal Note</strong>: เจ้าหน้าที่ตอบกลับหรือโน้ตภายใน</div>
+                  <div><strong style={{ color: '#f43f5e' }}>8. บันทึก Solution/Workaround & ปิดเคส (Resolve)</strong>: เจ้าหน้าที่บันทึกวิธีแก้ไขและปิดเคส</div>
+                  <div><strong style={{ color: '#34d399' }}>9. ส่งอีเมลแจ้งปิดเคสเสร็จสิ้นให้ลูกค้า</strong>: ระบบส่งอีเมลสรุปการปิดเคสเสร็จสมบูรณ์ให้ลูกค้า</div>
+                </div>
               </div>
             </div>
           )}
