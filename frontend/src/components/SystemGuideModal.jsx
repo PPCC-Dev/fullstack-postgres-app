@@ -138,7 +138,7 @@ export default function SystemGuideModal({ isOpen, onClose }) {
                 <div style={{ background: 'rgba(30, 41, 59, 0.6)', padding: '1.1rem', borderRadius: '12px', border: '1px solid rgba(255, 255, 255, 0.08)' }}>
                   <h4 style={{ color: '#34d399', margin: '0 0 0.5rem 0', fontSize: '0.95rem' }}>🔐 Security & Authentication</h4>
                   <p style={{ fontSize: '0.85rem', margin: 0, color: '#94a3b8' }}>
-                    ใช้ระบบ JWT (JSON Web Token) เก็บลง localStorage มีระบบ Verification และ Automatic Mail Notifications ผ่าน SMTP
+                    ใช้ระบบยืนยันตัวตนด้วย JWT (JSON Web Token Authentication) พร้อมระบบ Token Verification & Expiry Management และ Automatic Mail Notifications ผ่าน SMTP
                   </p>
                 </div>
                 <div style={{ background: 'rgba(30, 41, 59, 0.6)', padding: '1.1rem', borderRadius: '12px', border: '1px solid rgba(255, 255, 255, 0.08)' }}>
