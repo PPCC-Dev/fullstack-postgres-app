@@ -723,7 +723,7 @@ export default function AgentDashboard({ onViewTicket, initialTab = 'queue', ref
               className={`btn ${activeTab === 'workloads' ? 'btn-primary' : 'btn-secondary'}`}
               style={{ padding: '0.4rem 1.25rem', borderRadius: '30px', fontSize: '0.85rem' }}
             >
-              👥 เคสในมือเจ้าหน้าที่ ({members.filter(m => m.role === 'agent').length})
+              👥 เคสในมือเจ้าหน้าที่ ({assignedCount})
             </button>
               <button
                 onClick={() => { setActiveTab('all'); setStatusFilter('all'); }}
@@ -877,11 +877,13 @@ export default function AgentDashboard({ onViewTicket, initialTab = 'queue', ref
                           <div className="ticket-header">
                             <span className="ticket-id">{ticket.ticket_number || '#' + String(ticket.id).padStart(3, '0')}</span>
                             <span className={`badge ${
-                              ticket.status === 'open' ? 'badge-status-open' :
-                              ticket.status === 'assigned' ? 'badge-status-assigned' : 'badge-status-resolved'
+                              ['C', 'resolved'].includes(ticket.status) ? 'badge-status-resolved' :
+                              (ticket.agent_id || ['O', 'I', 'assigned', 'in_progress'].includes(ticket.status)) ? 'badge-status-assigned' :
+                              'badge-status-open'
                             }`}>
-                              {ticket.status === 'open' ? '• รอยืนยัน' :
-                               ticket.status === 'assigned' ? '• กำลังดูแล' : '• เสร็จสิ้น'}
+                              {['C', 'resolved'].includes(ticket.status) ? '• เสร็จสิ้น' :
+                               (ticket.agent_id || ['O', 'I', 'assigned', 'in_progress'].includes(ticket.status)) ? '• กำลังดำเนินการ' :
+                               '• รอดำเนินการ'}
                             </span>
                             
                             <span className="badge badge-module">🧩 {ticket.module}</span>
@@ -996,8 +998,8 @@ export default function AgentDashboard({ onViewTicket, initialTab = 'queue', ref
                       gap: '1.5rem'
                     }}>
                       {agents.map(agent => {
-                        const isSelf = agent.id === user.id;
-                        const claimedTickets = agent.assigned_tickets || [];
+                        const isSelf = Number(agent.id) === Number(user.id);
+                        const claimedTickets = tickets.filter(t => Number(t.agent_id) === Number(agent.id));
                         const activeClaimed = claimedTickets.filter(t => !['resolved', 'C'].includes(t.status));
 
                         return (
