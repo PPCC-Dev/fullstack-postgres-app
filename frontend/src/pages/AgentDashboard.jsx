@@ -140,6 +140,9 @@ export default function AgentDashboard({ onViewTicket, initialTab = 'queue', ref
         setStats(statsData);
       }
 
+      // Fetch members as well
+      await fetchMembers();
+
       // Fetch config data too
       await fetchConfigData();
     } catch (err) {
@@ -569,7 +572,13 @@ export default function AgentDashboard({ onViewTicket, initialTab = 'queue', ref
   const unassignedTickets = filteredByCustomerTickets.filter(t => !t.agent_id && !['C', 'resolved'].includes(t.status));
   const myAssignedTickets = filteredByCustomerTickets.filter(t => t.agent_id === user.id && !['C', 'resolved'].includes(t.status));
   const resolvedTickets = filteredByCustomerTickets.filter(t => ['C', 'resolved'].includes(t.status));
-  const agents = members.filter(m => (m.role || '').toLowerCase() === 'agent');
+  const agents = members
+    .filter(m => ['agent', 'admin'].includes((m.role || '').toLowerCase()))
+    .sort((a, b) => {
+      const countA = tickets.filter(t => Number(t.agent_id) === Number(a.id) && !['resolved', 'C'].includes(t.status)).length;
+      const countB = tickets.filter(t => Number(t.agent_id) === Number(b.id) && !['resolved', 'C'].includes(t.status)).length;
+      return countB - countA;
+    });
   
   // For 'all' tab, apply statusFilter
   const displayedAllTickets = filteredByCustomerTickets.filter(t => {
