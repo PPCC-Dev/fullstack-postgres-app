@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 
 export default function SystemGuideModal({ isOpen, onClose }) {
   const [activeTab, setActiveTab] = useState('overview');
+  const [previewImage, setPreviewImage] = useState(null);
 
   if (!isOpen) return null;
 
@@ -368,14 +369,29 @@ export default function SystemGuideModal({ isOpen, onClose }) {
                 <img 
                   src="/workflow_diagram.png" 
                   alt="PPCC Care Core Workflows Sequence Diagram" 
+                  onClick={() => setPreviewImage('/workflow_diagram.png')}
+                  title="คลิกเพื่อเปิดขยายรูปภาพขนาดใหญ่"
                   style={{ 
                     maxWidth: '100%', 
                     height: 'auto', 
                     borderRadius: '8px', 
                     boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
-                    border: '1px solid rgba(255, 255, 255, 0.1)'
+                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                    cursor: 'pointer',
+                    transition: 'transform 0.2s, filter 0.2s'
                   }} 
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = 'scale(1.01)';
+                    e.currentTarget.style.filter = 'brightness(1.08)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'scale(1)';
+                    e.currentTarget.style.filter = 'brightness(1)';
+                  }}
                 />
+                <div style={{ marginTop: '0.5rem', fontSize: '0.775rem', color: '#94a3b8' }}>
+                  🔍 คลิกที่รูปภาพเพื่อเปิดดูขนาดใหญ่ (Full Resolution)
+                </div>
               </div>
 
               <div style={{ background: 'rgba(30, 41, 59, 0.7)', padding: '1.25rem', borderRadius: '12px', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
@@ -409,6 +425,67 @@ export default function SystemGuideModal({ isOpen, onClose }) {
         </div>
 
       </div>
+
+      {/* Lightbox Image Preview Modal */}
+      {previewImage && (
+        <div 
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.92)',
+            backdropFilter: 'blur(12px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 9999999,
+            padding: '1.5rem'
+          }}
+          onClick={() => setPreviewImage(null)}
+        >
+          <button 
+            onClick={() => setPreviewImage(null)}
+            style={{
+              position: 'absolute',
+              top: '20px',
+              right: '25px',
+              background: 'rgba(255, 255, 255, 0.15)',
+              border: 'none',
+              color: '#ffffff',
+              fontSize: '2rem',
+              width: '45px',
+              height: '45px',
+              borderRadius: '50%',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              transition: 'background 0.2s'
+            }}
+            onMouseEnter={(e) => e.target.style.background = 'rgba(239, 68, 68, 0.85)'}
+            onMouseLeave={(e) => e.target.style.background = 'rgba(255, 255, 255, 0.15)'}
+            title="ปิดภาพขยาย"
+          >
+            &times;
+          </button>
+          
+          <img 
+            src={previewImage} 
+            alt="Sequence Diagram Preview" 
+            style={{
+              maxWidth: '92vw',
+              maxHeight: '92vh',
+              objectFit: 'contain',
+              borderRadius: '12px',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.9), 0 0 30px rgba(56, 189, 248, 0.25)',
+              border: '1px solid rgba(255, 255, 255, 0.15)'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      )}
     </div>
   );
 }
