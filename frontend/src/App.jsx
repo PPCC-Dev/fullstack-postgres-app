@@ -466,14 +466,6 @@ function MainAppContent() {
                   >
                     ⚙️ จัดการระบบ
                   </button>
-                  <button 
-                    className="btn btn-secondary" 
-                    onClick={() => setIsGuideModalOpen(true)}
-                    style={{ padding: '0.4rem 1rem', fontSize: '0.85rem', marginRight: '0.5rem', background: 'rgba(99, 102, 241, 0.15)', border: '1px solid rgba(99, 102, 241, 0.35)', color: '#818cf8', fontWeight: 600 }}
-                    title="ดูคู่มือโครงสร้างระบบและการทำงาน"
-                  >
-                    📘 คู่มือระบบ
-                  </button>
                   </>
             )}
 
@@ -484,6 +476,17 @@ function MainAppContent() {
             >
               ➕ สร้างเคสใหม่
             </button>
+
+            {user.role === 'admin' && (
+              <button 
+                className="btn btn-secondary" 
+                onClick={() => setIsGuideModalOpen(true)}
+                style={{ padding: '0.4rem 1rem', fontSize: '0.85rem', marginRight: '0.5rem', background: 'rgba(99, 102, 241, 0.15)', border: '1px solid rgba(99, 102, 241, 0.35)', color: '#818cf8', fontWeight: 600 }}
+                title="ดูคู่มือโครงสร้างระบบและการทำงาน"
+              >
+                📘 คู่มือระบบ
+              </button>
+            )}
 
              {/* Notification Bell Center */}
              <div className="notification-bell-container" ref={bellRef} style={{ marginRight: '0.5rem' }}>
