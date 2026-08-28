@@ -355,14 +355,43 @@ export default function SystemGuideModal({ isOpen, onClose }) {
           {/* TAB 6: WORKFLOW */}
           {activeTab === 'workflow' && (
             <div>
-              <h3 style={{ color: '#38bdf8', marginTop: 0, fontSize: '1.15rem' }}>🛠️ ลำดับขั้นตอนการทำงานหลัก (System Workflow)</h3>
+              <h3 style={{ color: '#38bdf8', marginTop: 0, fontSize: '1.15rem' }}>🛠️ ลำดับขั้นตอนการทำงานหลัก (Core Workflows Sequence Diagram)</h3>
 
-              <ol style={{ paddingLeft: '1.25rem', lineHeight: 1.8, color: '#e2e8f0' }}>
-                <li style={{ marginBottom: '0.5rem' }}><strong style={{ color: '#34d399' }}>การสร้างเคส (Create Ticket)</strong>: ลูกค้ากดปุ่ม "➕ สร้างเคสใหม่" กรอกรายละเอียดและแนบไฟล์ ระบบจะสร้างทิคเก็ต บันทึกลง PostgreSQL และส่งอีเมลยืนยันไปยังลูกค้า พร้อมส่งสัญญาณแจ้งเตือน In-App Bell ไปยังทีม Agent</li>
-                <li style={{ marginBottom: '0.5rem' }}><strong style={{ color: '#38bdf8' }}>การรับเรื่อง (Claim Ticket)</strong>: เจ้าหน้าที่ Agent เข้าไปที่หน้า "📥 คิวงานรอรับเรื่อง" กดปุ่ม "📥 รับเคสดูแล" ระบบจะอัปเดต `agent_id` และเปลี่ยนสถานะเป็นกำลังดำเนินการ พร้อมส่งอีเมลแจ้งลูกค้าว่ามีเจ้าหน้าที่รับเรื่องดูแลแล้ว</li>
-                <li style={{ marginBottom: '0.5rem' }}><strong style={{ color: '#c084fc' }}>การสื่อสารโต้ตอบ (Communication)</strong>: ลูกค้าและ Agent สามารถพิมพ์ข้อความและแนบรูปภาพคุยกันในหน้า Ticket Detail ได้ตลอดเวลา โดย Agent สามารถเลือกส่งเป็น **Internal Note** หากต้องการบันทึกข้อมูลส่วนตัวระหว่างทีม</li>
-                <li><strong style={{ color: '#fbbf24' }}>การแก้ปัญหาและปิดงาน (Resolution & Close)</strong>: เมื่อแก้ไขปัญหาเสร็จแล้ว Agent จะกรอกข้อมูล **Solution** หรือ **Workaround** และเปลี่ยนสถานะเป็นปิดเคส (`C`) ระบบจะส่งอีเมลและแจ้งเตือนแจ้งลูกค้าว่าเคสแก้ไขเรียบร้อยแล้ว</li>
-              </ol>
+              <div style={{ 
+                background: 'rgba(15, 23, 42, 0.8)', 
+                padding: '1rem', 
+                borderRadius: '12px', 
+                border: '1px solid rgba(99, 102, 241, 0.3)', 
+                textAlign: 'center', 
+                marginBottom: '1.5rem' 
+              }}>
+                <img 
+                  src="/workflow_diagram.png" 
+                  alt="PPCC Care Core Workflows Sequence Diagram" 
+                  style={{ 
+                    maxWidth: '100%', 
+                    height: 'auto', 
+                    borderRadius: '8px', 
+                    boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
+                    border: '1px solid rgba(255, 255, 255, 0.1)'
+                  }} 
+                />
+              </div>
+
+              <div style={{ background: 'rgba(30, 41, 59, 0.7)', padding: '1.25rem', borderRadius: '12px', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
+                <h4 style={{ color: '#a5b4fc', margin: '0 0 0.75rem 0', fontSize: '1rem' }}>📋 สรุป 9 ขั้นตอนตาม Diagram:</h4>
+                <ol style={{ paddingLeft: '1.25rem', margin: 0, lineHeight: 1.8, color: '#e2e8f0' }}>
+                  <li style={{ marginBottom: '0.4rem' }}><strong style={{ color: '#38bdf8' }}>1. สร้างทิคเก็ตใหม่ (Create Ticket)</strong>: ลูกค้าส่งคำขอสร้างทิคเก็ตใหม่ไปยัง Server & DB</li>
+                  <li style={{ marginBottom: '0.4rem' }}><strong style={{ color: '#34d399' }}>2. ส่งอีเมลยืนยันการรับเรื่องให้ลูกค้า</strong>: ระบบส่งอีเมลอัตโนมัติแจ้งยืนยันรับเรื่องผ่าน SMTP</li>
+                  <li style={{ marginBottom: '0.4rem' }}><strong style={{ color: '#c084fc' }}>3. แสดงทิคเก็ตใหม่ในหน้า Queue & ส่งแจ้งเตือน In-App Bell</strong>: ระบบแจ้งเตือนเจ้าหน้าที่ Agent</li>
+                  <li style={{ marginBottom: '0.4rem' }}><strong style={{ color: '#38bdf8' }}>4. กดรับเรื่อง (Claim Ticket)</strong>: เจ้าหน้าที่กดรับเรื่องดูแลเคส</li>
+                  <li style={{ marginBottom: '0.4rem' }}><strong style={{ color: '#34d399' }}>5. ส่งอีเมลแจ้งลูกค้าว่ามี Agent รับดูแลแล้ว</strong>: แจ้งลูกค้าว่าเจ้าหน้าที่กำลังดำเนินการ</li>
+                  <li style={{ marginBottom: '0.4rem' }}><strong style={{ color: '#fbbf24' }}>6. [Loop สนทนา] ส่งข้อความเพิ่มเติม / แนบรูป</strong>: ลูกค้าส่งรายละเอียดเพิ่มเติมเข้าสู่ระบบ</li>
+                  <li style={{ marginBottom: '0.4rem' }}><strong style={{ color: '#fbbf24' }}>7. [Loop สนทนา] ส่งข้อความตอบกลับ / บันทึก Internal Note</strong>: เจ้าหน้าที่ตอบกลับหรือโน้ตภายใน</li>
+                  <li style={{ marginBottom: '0.4rem' }}><strong style={{ color: '#f43f5e' }}>8. บันทึก Solution/Workaround & ปิดเคส (Resolve)</strong>: เจ้าหน้าที่บันทึกวิธีแก้ไขและปิดเคส</li>
+                  <li><strong style={{ color: '#34d399' }}>9. ส่งอีเมลแจ้งปิดเคสเสร็จสิ้นให้ลูกค้า</strong>: ระบบส่งอีเมลสรุปการปิดเคสเสร็จสมบูรณ์ให้ลูกค้า</li>
+                </ol>
+              </div>
             </div>
           )}
 
