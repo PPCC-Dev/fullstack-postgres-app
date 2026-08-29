@@ -2057,11 +2057,25 @@ export default function AgentDashboard({ onViewTicket, initialTab = 'queue', ref
                                           <option value="agent">Agent</option>
                                           <option value="admin">Admin</option>
                                         </select>
-                                      ) : (
-                                        <span className={`badge-role`} style={{ display: 'inline-block', background: 'rgba(99, 102, 241, 0.1)', color: '#4f46e5', padding: '0.25rem 0.75rem', borderRadius: '12px', fontSize: '0.8rem', fontWeight: 600 }}>
-                                          {role.base_role}
-                                        </span>
-                                      )}
+                                      ) : (() => {
+                                        const badge = getRoleBadge(role.base_role);
+                                        return (
+                                          <span className="badge-role" style={{
+                                            display: 'inline-flex',
+                                            alignItems: 'center',
+                                            gap: '0.35rem',
+                                            background: badge.bg,
+                                            border: badge.border,
+                                            color: badge.color,
+                                            padding: '0.25rem 0.75rem',
+                                            borderRadius: '12px',
+                                            fontSize: '0.8rem',
+                                            fontWeight: 700
+                                          }}>
+                                            <span>{badge.icon}</span> {role.base_role}
+                                          </span>
+                                        );
+                                      })()}
                                     </td>
                                     <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }}>
                                       {editingRoleId === role.id ? (
