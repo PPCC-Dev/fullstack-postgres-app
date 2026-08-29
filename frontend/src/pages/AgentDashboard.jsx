@@ -583,6 +583,40 @@ export default function AgentDashboard({ onViewTicket, initialTab = 'queue', ref
   const activeAgents = agents.filter(agent =>
     tickets.some(t => Number(t.agent_id) === Number(agent.id) && !['resolved', 'C'].includes(t.status))
   );
+
+  const getRoleBadge = (roleName) => {
+    const r = (roleName || 'customer').toLowerCase();
+    if (r.includes('admin')) {
+      return {
+        bg: 'rgba(239, 68, 68, 0.12)',
+        border: '1px solid rgba(239, 68, 68, 0.3)',
+        color: '#dc2626',
+        icon: '👑'
+      };
+    }
+    if (r.includes('agent') || r.includes('support') || r.includes('staff') || r.includes('technician')) {
+      return {
+        bg: 'rgba(139, 92, 246, 0.12)',
+        border: '1px solid rgba(139, 92, 246, 0.3)',
+        color: '#7c3aed',
+        icon: '⚡'
+      };
+    }
+    if (r.includes('customer') || r.includes('user') || r.includes('client')) {
+      return {
+        bg: 'rgba(14, 165, 233, 0.12)',
+        border: '1px solid rgba(14, 165, 233, 0.3)',
+        color: '#0284c7',
+        icon: '👤'
+      };
+    }
+    return {
+      bg: 'rgba(16, 185, 129, 0.12)',
+      border: '1px solid rgba(16, 185, 129, 0.3)',
+      color: '#059669',
+      icon: '🏷️'
+    };
+  };
   
   // For 'all' tab, apply statusFilter
   const displayedAllTickets = filteredByCustomerTickets.filter(t => {

@@ -145,17 +145,29 @@ body {
   font-size: 0.75rem;
   font-weight: 700;
   text-transform: uppercase;
-  padding: 0.15rem 0.5rem;
+  padding: 0.15rem 0.6rem;
   border-radius: 20px;
-  background: linear-gradient(135deg, rgba(0, 75, 181, 0.08), rgba(99, 102, 241, 0.08));
-  border: 1px solid rgba(0, 75, 181, 0.12);
-  color: #004bb5; /* Royal Blue */
+  background: rgba(14, 165, 233, 0.12);
+  border: 1px solid rgba(14, 165, 233, 0.3);
+  color: #0284c7; /* Customer Cyan/Blue */
+}
+
+.badge-role.customer {
+  background: rgba(14, 165, 233, 0.12);
+  border: 1px solid rgba(14, 165, 233, 0.3);
+  color: #0284c7;
 }
 
 .badge-role.agent {
-  background: linear-gradient(135deg, rgba(99, 102, 241, 0.08), rgba(244, 63, 94, 0.08));
-  border: 1px solid rgba(99, 102, 241, 0.12);
-  color: var(--accent-purple);
+  background: rgba(139, 92, 246, 0.12);
+  border: 1px solid rgba(139, 92, 246, 0.3);
+  color: #7c3aed;
+}
+
+.badge-role.admin {
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #dc2626;
 }
 
 /* Glassmorphism Cards */
