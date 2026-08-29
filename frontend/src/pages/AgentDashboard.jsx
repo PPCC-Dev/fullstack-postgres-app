@@ -579,6 +579,10 @@ export default function AgentDashboard({ onViewTicket, initialTab = 'queue', ref
       const countB = tickets.filter(t => Number(t.agent_id) === Number(b.id) && !['resolved', 'C'].includes(t.status)).length;
       return countB - countA;
     });
+
+  const activeAgents = agents.filter(agent =>
+    tickets.some(t => Number(t.agent_id) === Number(agent.id) && !['resolved', 'C'].includes(t.status))
+  );
   
   // For 'all' tab, apply statusFilter
   const displayedAllTickets = filteredByCustomerTickets.filter(t => {
@@ -991,14 +995,14 @@ export default function AgentDashboard({ onViewTicket, initialTab = 'queue', ref
                     <h2 className="section-title">
                       <span>👥</span> รายการสรุปงานและเคสในความดูแลของเจ้าหน้าที่
                     </h2>
-                    <span style={{ fontSize: '0.85rem', color: '#64748b' }}>มีเจ้าหน้าที่ทั้งหมด {agents.length} คน</span>
+                    <span style={{ fontSize: '0.85rem', color: '#64748b' }}>มีเจ้าหน้าที่ที่มีเคสค้างอยู่ {activeAgents.length} คน</span>
                   </div>
 
-                  {agents.length === 0 ? (
+                  {activeAgents.length === 0 ? (
                     <div className="glass-card empty-state">
                       <span className="empty-icon">👥</span>
-                      <h3>ไม่พบข้อมูลเจ้าหน้าที่ในระบบ</h3>
-                      <p>ระบบขัดข้องหรือไม่พบผู้ใช้ที่มีสิทธิ์เป็นเจ้าหน้าที่ (Agent) ขณะนี้</p>
+                      <h3>ไม่พบเจ้าหน้าที่ที่มีเคสค้างอยู่</h3>
+                      <p>ขณะนี้ไม่มีเจ้าหน้าที่คนใดที่มีเคสค้างอยู่ในความดูแล</p>
                     </div>
                   ) : (
                     <div style={{
@@ -1006,7 +1010,7 @@ export default function AgentDashboard({ onViewTicket, initialTab = 'queue', ref
                       gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
                       gap: '1.5rem'
                     }}>
-                      {agents.map(agent => {
+                      {activeAgents.map(agent => {
                         const isSelf = Number(agent.id) === Number(user.id);
                         const claimedTickets = tickets.filter(t => Number(t.agent_id) === Number(agent.id));
                         const activeClaimed = claimedTickets.filter(t => !['resolved', 'C'].includes(t.status));
