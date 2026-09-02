@@ -102,13 +102,24 @@ export default function CompatibilityMatrix() {
         method: 'POST',
         body: formData
       });
-      const json = await res.json();
+      
+      const contentType = res.headers.get('content-type');
+      let json = {};
+      if (contentType && contentType.includes('application/json')) {
+        json = await res.json();
+      } else {
+        if (res.status === 413) {
+          throw new Error('ขนาดไฟล์ใหญ่เกินขีดจำกัดที่เซิร์ฟเวอร์อนุญาต (413 Payload Too Large)');
+        }
+        throw new Error(`เซิร์ฟเวอร์ตอบกลับไม่ถูกต้อง (${res.status} ${res.statusText})`);
+      }
+
       if (json.success) {
         alert(`อัปโหลดและอัปเดตข้อมูลสำเร็จ! นำเข้าทั้งหมด ${json.count} รายการ จากไฟล์ "${file.name}"`);
         fetchFilterOptions();
         fetchMatrixData();
       } else {
-        alert(`เกิดข้อผิดพลาดในการนำเข้าไฟล์: ${json.error}`);
+        alert(`เกิดข้อผิดพลาดในการนำเข้าไฟล์: ${json.error || 'ไม่สามารถประมวลผลไฟล์ได้'}`);
       }
     } catch (err) {
       alert(`เกิดข้อผิดพลาดในการอัปโหลดไฟล์: ${err.message}`);
@@ -123,7 +134,14 @@ export default function CompatibilityMatrix() {
     setReimporting(true);
     try {
       const res = await fetch(`${API_URL}/compatibility/reimport`, { method: 'POST' });
-      const json = await res.json();
+      const contentType = res.headers.get('content-type');
+      let json = {};
+      if (contentType && contentType.includes('application/json')) {
+        json = await res.json();
+      } else {
+        throw new Error(`เซิร์ฟเวอร์ตอบกลับไม่ถูกต้อง (${res.status} ${res.statusText})`);
+      }
+
       if (json.success) {
         alert(`ซิงค์ข้อมูลสำเร็จ! นำเข้าทั้งหมด ${json.count} รายการ จากทุกเวอร์ชัน CSI`);
         fetchFilterOptions();

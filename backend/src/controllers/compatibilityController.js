@@ -1,5 +1,6 @@
 import pool from '../config/db.js';
 import fs from 'fs';
+import path from 'path';
 import { initAndImportCompatibilityMatrix } from '../services/compatibilityImporter.js';
 
 /**
@@ -155,7 +156,8 @@ export async function uploadMatrixFile(req, res) {
     const result = await initAndImportCompatibilityMatrix(true, uploadedFilePath);
 
     // Clean up temp file
-    if (fs.existsSync(uploadedFilePath) && uploadedFilePath !== '/Users/tunited/Projects/fullstack-postgres-app/SyteLine_Compatibility_Matrix.xlsm') {
+    const rootMatrixPath = path.resolve(process.cwd(), 'SyteLine_Compatibility_Matrix.xlsm');
+    if (fs.existsSync(uploadedFilePath) && uploadedFilePath !== rootMatrixPath) {
       try {
         fs.unlinkSync(uploadedFilePath);
       } catch (e) {

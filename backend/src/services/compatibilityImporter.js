@@ -54,14 +54,13 @@ export async function initAndImportCompatibilityMatrix(force = false, customFile
 
     // 3. Locate xlsm file
     let filePath = customFilePath;
+    const rootMatrixPath = path.resolve(process.cwd(), 'SyteLine_Compatibility_Matrix.xlsm');
 
     if (!filePath || !fs.existsSync(filePath)) {
       const possiblePaths = [
+        rootMatrixPath,
         path.resolve(__dirname, '../../../SyteLine_Compatibility_Matrix.xlsm'),
-        path.resolve(__dirname, '../../../../SyteLine_Compatibility_Matrix.xlsm'),
-        path.resolve(process.cwd(), 'SyteLine_Compatibility_Matrix.xlsm'),
-        '/Users/tunited/Projects/fullstack-postgres-app/SyteLine_Compatibility_Matrix.xlsm',
-        '/Users/tunited/Downloads/SyteLine_Compatibility_Matrix_1.xlsm'
+        path.resolve(__dirname, '../../../../SyteLine_Compatibility_Matrix.xlsm')
       ];
       filePath = possiblePaths.find(p => fs.existsSync(p));
     }
@@ -72,10 +71,9 @@ export async function initAndImportCompatibilityMatrix(force = false, customFile
     }
 
     // If customFilePath uploaded, copy it over to root project directory for persistence
-    const targetRootPath = '/Users/tunited/Projects/fullstack-postgres-app/SyteLine_Compatibility_Matrix.xlsm';
-    if (customFilePath && fs.existsSync(customFilePath) && customFilePath !== targetRootPath) {
+    if (customFilePath && fs.existsSync(customFilePath) && customFilePath !== rootMatrixPath) {
       try {
-        fs.copyFileSync(customFilePath, targetRootPath);
+        fs.copyFileSync(customFilePath, rootMatrixPath);
         console.log(`💾 Overwritten project root matrix file with uploaded version.`);
       } catch (cpErr) {
         console.warn('Could not copy uploaded file to root path:', cpErr.message);
