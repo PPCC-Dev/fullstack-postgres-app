@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 
 
-export default function AdminDashboard({ onNavigateToTickets, onViewTicket, refreshKey }) {
+export default function AdminDashboard({ onNavigateToTickets, onViewTicket, refreshKey, onCreateTicket }) {
   const { user, API_URL } = useAuth();
   const [filter, setFilter] = useState('all'); // 'daily', 'weekly', 'monthly', 'all'
   const [custNumFilter, setCustNumFilter] = useState('all');
@@ -452,15 +452,34 @@ export default function AdminDashboard({ onNavigateToTickets, onViewTicket, refr
   return (
     <div className="dashboard-container" style={{ padding: '2rem', maxWidth: '1200px', margin: '0 auto' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
-        <h1 style={{ margin: 0, background: 'linear-gradient(135deg, #a855f7, #00e5ff)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', fontWeight: 800 }}>
-          📊 Admin Insights & Analytics Portal
-        </h1>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem', flexWrap: 'wrap' }}>
+          <h1 style={{ margin: 0, background: 'linear-gradient(135deg, #a855f7, #00e5ff)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', fontWeight: 800 }}>
+            📊 Admin Insights & Analytics Portal
+          </h1>
+
+          <div className="segment-control" style={{ display: 'inline-flex', background: 'rgba(0,0,0,0.03)', border: '1px solid rgba(0,0,0,0.08)', padding: '0.25rem', borderRadius: '14px' }}>
+            <button
+              type="button"
+              onClick={() => setActiveSubTab('summary')}
+              style={{ padding: '0.4rem 1rem', borderRadius: '10px', fontSize: '0.825rem', fontWeight: 600, border: 'none', cursor: 'pointer', transition: 'all 0.2s', background: activeSubTab === 'summary' ? '#ffffff' : 'transparent', color: activeSubTab === 'summary' ? '#1e293b' : '#64748b', boxShadow: activeSubTab === 'summary' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none' }}
+            >
+              📊 สรุปประมวลผล (Overview Board)
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveSubTab('insights')}
+              style={{ padding: '0.4rem 1rem', borderRadius: '10px', fontSize: '0.825rem', fontWeight: 600, border: 'none', cursor: 'pointer', transition: 'all 0.2s', background: activeSubTab === 'insights' ? '#ffffff' : 'transparent', color: activeSubTab === 'insights' ? '#1e293b' : '#64748b', boxShadow: activeSubTab === 'insights' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none' }}
+            >
+              📈 ตารางวิเคราะห์สรุปไขว้ (Pivot & Trend Analytics)
+            </button>
+          </div>
+        </div>
         
         {activeSubTab === 'summary' && (
-          <div style={{ display: 'flex', gap: '1rem' }}>
+          <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'nowrap' }}>
             <select 
               className="glass-input" 
-              style={{ margin: 0, minWidth: '150px' }}
+              style={{ margin: 0, width: 'auto', minWidth: '200px', flex: '0 0 auto' }}
               value={custNumFilter} 
               onChange={(e) => setCustNumFilter(e.target.value)}
             >
@@ -473,7 +492,7 @@ export default function AdminDashboard({ onNavigateToTickets, onViewTicket, refr
               className="glass-input" 
               value={filter} 
               onChange={(e) => setFilter(e.target.value)}
-              style={{ margin: 0, width: 'auto', minWidth: '150px' }}
+              style={{ margin: 0, width: 'auto', minWidth: '160px', flex: '0 0 auto' }}
             >
               <option value="all">ทั้งหมด (All Time)</option>
               <option value="daily">รายวัน (Daily)</option>
@@ -482,23 +501,6 @@ export default function AdminDashboard({ onNavigateToTickets, onViewTicket, refr
             </select>
           </div>
         )}
-      </div>
-
-      <div className="segment-control" style={{ marginBottom: '2rem', display: 'inline-flex', background: 'rgba(0,0,0,0.03)', border: '1px solid rgba(0,0,0,0.08)', padding: '0.25rem', borderRadius: '14px' }}>
-        <button
-          type="button"
-          onClick={() => setActiveSubTab('summary')}
-          style={{ padding: '0.5rem 1.25rem', borderRadius: '12px', fontSize: '0.85rem', fontWeight: 600, border: 'none', cursor: 'pointer', transition: 'all 0.2s', background: activeSubTab === 'summary' ? '#ffffff' : 'transparent', color: activeSubTab === 'summary' ? '#1e293b' : '#64748b', boxShadow: activeSubTab === 'summary' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none' }}
-        >
-          📊 สรุปประมวลผล (Overview Board)
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveSubTab('insights')}
-          style={{ padding: '0.5rem 1.25rem', borderRadius: '12px', fontSize: '0.85rem', fontWeight: 600, border: 'none', cursor: 'pointer', transition: 'all 0.2s', background: activeSubTab === 'insights' ? '#ffffff' : 'transparent', color: activeSubTab === 'insights' ? '#1e293b' : '#64748b', boxShadow: activeSubTab === 'insights' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none' }}
-        >
-          📈 ตารางวิเคราะห์สรุปไขว้ (Pivot & Trend Analytics)
-        </button>
       </div>
 
       {error && (

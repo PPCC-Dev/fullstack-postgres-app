@@ -9,9 +9,10 @@ import AdminDashboard from './pages/AdminDashboard';
 import TicketDetail from './pages/TicketDetail';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
+import CompatibilityMatrix from './pages/CompatibilityMatrix';
 import SystemGuideModal from './components/SystemGuideModal';
 
-function ProfileModal({ isOpen, onClose }) {
+function ProfileModal({ isOpen, onClose, onOpenMatrix }) {
   const { user, updateProfile, changePassword } = useAuth();
   const [custNum, setCustNum] = useState(user?.cust_num || '');
   const [name, setName] = useState(user?.name || '');
@@ -288,6 +289,50 @@ function ProfileModal({ isOpen, onClose }) {
           </div>
 
         </div>
+
+        {/* Tools Section (Restricted to Admin & Agent) */}
+        {(user.role === 'admin' || user.role === 'agent') && (
+          <div style={{ marginTop: '2rem', paddingTop: '1.5rem', borderTop: '1px solid rgba(0, 0, 0, 0.08)' }}>
+            <h3 style={{ margin: '0 0 1rem 0', fontSize: '1.1rem', color: '#1e293b', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <span>🛡️</span>
+              <span>เครื่องมือสำหรับผู้ดูแลระบบ (Admin Tools)</span>
+            </h3>
+            <div style={{ background: 'rgba(2, 132, 199, 0.06)', border: '1px solid rgba(2, 132, 199, 0.25)', borderRadius: '16px', padding: '1.25rem 1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+              <div>
+                <h4 style={{ margin: '0 0 0.35rem 0', fontSize: '1rem', color: '#0369a1', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                  <span>🔍</span>
+                  <span>SyteLine Compatibility Matrix</span>
+                </h4>
+                <p style={{ margin: 0, fontSize: '0.85rem', color: '#475569' }}>
+                  ตรวจสอบข้อมูลความเข้ากันได้ของระบบ Infor SyteLine กับ OS, Database, Browser และสเปกเทคนิคทุกเวอร์ชัน
+                </p>
+              </div>
+              <button 
+                type="button"
+                className="btn btn-primary"
+                onClick={() => {
+                  onClose();
+                  if (onOpenMatrix) onOpenMatrix();
+                }}
+                style={{
+                  background: 'linear-gradient(135deg, #0284c7, #4f46e5)',
+                  color: '#ffffff',
+                  fontWeight: 700,
+                  fontSize: '0.875rem',
+                  padding: '0.65rem 1.35rem',
+                  borderRadius: '12px',
+                  border: 'none',
+                  boxShadow: '0 4px 14px rgba(2, 132, 199, 0.35)',
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                  transition: 'all 0.2s ease'
+                }}
+              >
+                🔍 เปิดหน้า Compatibility Matrix
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -318,6 +363,7 @@ function MainAppContent() {
 
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [adminView, setAdminView] = useState('dashboard'); // 'dashboard' or 'tickets'
+  const [currentView, setCurrentView] = useState('default'); // 'default' or 'matrix'
 
   // Notification Bell state
   const [notifications, setNotifications] = useState([]);
@@ -325,6 +371,10 @@ function MainAppContent() {
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const bellRef = useRef(null);
   
+  // Navigation Dropdown state
+  const [isNavDropdownOpen, setIsNavDropdownOpen] = useState(false);
+  const navDropdownRef = useRef(null);
+
   // Global Ticket & Guide Modals
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isGuideModalOpen, setIsGuideModalOpen] = useState(false);
@@ -360,6 +410,9 @@ function MainAppContent() {
     function handleClickOutside(event) {
       if (bellRef.current && !bellRef.current.contains(event.target)) {
         setIsNotificationOpen(false);
+      }
+      if (navDropdownRef.current && !navDropdownRef.current.contains(event.target)) {
+        setIsNavDropdownOpen(false);
       }
     }
     document.addEventListener('mousedown', handleClickOutside);
@@ -435,12 +488,16 @@ function MainAppContent() {
   return (
     <div className="app-container">
       {/* Profile Settings Modal */}
-      <ProfileModal isOpen={isProfileOpen} onClose={() => setIsProfileOpen(false)} />
+      <ProfileModal 
+        isOpen={isProfileOpen} 
+        onClose={() => setIsProfileOpen(false)} 
+        onOpenMatrix={() => { handleSetTicketId(null); setCurrentView('matrix'); }} 
+      />
 
       {/* Premium Glass Header */}
       <header className="header-glass">
         <div className="nav-content">
-          <div className="logo-container" onClick={() => handleSetTicketId(null)} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer' }}>
+          <div className="logo-container" onClick={() => { handleSetTicketId(null); setCurrentView('default'); }} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer' }}>
             <img 
               src="/logo_clover.png" 
               alt="PPCC Care Logo" 
@@ -450,42 +507,215 @@ function MainAppContent() {
           </div>
 
           <div className="nav-actions">
-            {user.role === 'admin' && (
-               <>
-                 <button 
-                   className="btn btn-secondary" 
-                   onClick={() => { handleSetTicketId(null); setAdminView(adminView === 'dashboard' ? 'tickets' : 'dashboard'); }}
-                   style={{ padding: '0.4rem 1rem', fontSize: '0.85rem', marginRight: '0.5rem' }}
-                 >
-                   {adminView === 'dashboard' ? '📂 จัดการทิคเก็ต' : '📊 ดูรายงานสรุป'}
-                 </button>
-                  <button 
-                    className="btn btn-primary" 
-                    onClick={() => { handleSetTicketId(null); setAdminView('config'); }}
-                    style={{ padding: '0.4rem 1rem', fontSize: '0.85rem', marginRight: '0.5rem' }}
+            {(user.role === 'admin' || user.role === 'agent') && (
+              <div className="nav-dropdown-container" ref={navDropdownRef} style={{ position: 'relative', marginRight: '0.5rem' }}>
+                <button 
+                  className="btn btn-secondary" 
+                  onClick={() => setIsNavDropdownOpen(!isNavDropdownOpen)}
+                  style={{
+                    padding: '0.45rem 1.1rem',
+                    fontSize: '0.85rem',
+                    background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.12), rgba(168, 85, 247, 0.12))',
+                    border: '1px solid rgba(99, 102, 241, 0.35)',
+                    color: '#6366f1',
+                    fontWeight: 700,
+                    borderRadius: '12px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    boxShadow: '0 2px 8px rgba(99, 102, 241, 0.1)',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  <span>⚡ เมนูระบบ</span>
+                  <span style={{ fontSize: '0.7rem', transition: 'transform 0.2s', transform: isNavDropdownOpen ? 'rotate(180deg)' : 'none' }}>▼</span>
+                </button>
+
+                {isNavDropdownOpen && (
+                  <div 
+                    style={{
+                      position: 'absolute',
+                      top: 'calc(100% + 8px)',
+                      left: 0,
+                      width: '260px',
+                      background: 'rgba(255, 255, 255, 0.98)',
+                      backdropFilter: 'blur(20px)',
+                      border: '1px solid rgba(0, 0, 0, 0.1)',
+                      borderRadius: '16px',
+                      boxShadow: '0 20px 40px rgba(0, 0, 0, 0.15), 0 5px 15px rgba(99, 102, 241, 0.08)',
+                      padding: '0.5rem',
+                      zIndex: 1000,
+                      animation: 'fadeIn 0.15s ease'
+                    }}
                   >
-                    ⚙️ จัดการระบบ
-                  </button>
-                  </>
-            )}
+                    <div style={{ padding: '0.4rem 0.75rem 0.35rem 0.75rem', fontSize: '0.725rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px', borderBottom: '1px solid rgba(0, 0, 0, 0.05)', marginBottom: '0.35rem' }}>
+                      เมนูสำหรับการทำงาน
+                    </div>
 
-            <button 
-              className="btn btn-primary" 
-              onClick={() => setIsModalOpen(true)}
-              style={{ padding: '0.4rem 1rem', fontSize: '0.85rem', marginRight: '0.5rem', background: 'linear-gradient(135deg, #10b981, #059669)', border: 'none', color: 'white', fontWeight: 'bold' }}
-            >
-              ➕ สร้างเคสใหม่
-            </button>
+                    <button
+                      onClick={() => {
+                        setIsNavDropdownOpen(false);
+                        handleSetTicketId(null);
+                        setCurrentView('default');
+                        if (user.role === 'admin') setAdminView('tickets');
+                      }}
+                      style={{
+                        width: '100%',
+                        textAlign: 'left',
+                        padding: '0.65rem 0.85rem',
+                        borderRadius: '10px',
+                        border: 'none',
+                        background: currentView === 'default' && adminView === 'tickets' ? 'rgba(99, 102, 241, 0.12)' : 'transparent',
+                        color: currentView === 'default' && adminView === 'tickets' ? '#4f46e5' : '#1e293b',
+                        fontWeight: currentView === 'default' && adminView === 'tickets' ? 700 : 600,
+                        fontSize: '0.85rem',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.6rem',
+                        marginBottom: '0.2rem',
+                        transition: 'background 0.2s'
+                      }}
+                      onMouseEnter={(e) => { if (!(currentView === 'default' && adminView === 'tickets')) e.currentTarget.style.background = '#f8fafc'; }}
+                      onMouseLeave={(e) => { if (!(currentView === 'default' && adminView === 'tickets')) e.currentTarget.style.background = 'transparent'; }}
+                    >
+                      <span style={{ fontSize: '1rem' }}>📂</span>
+                      <span>จัดการทิคเก็ต</span>
+                    </button>
 
-            {user.role === 'admin' && (
-              <button 
-                className="btn btn-secondary" 
-                onClick={() => setIsGuideModalOpen(true)}
-                style={{ padding: '0.4rem 1rem', fontSize: '0.85rem', marginRight: '0.5rem', background: 'rgba(99, 102, 241, 0.15)', border: '1px solid rgba(99, 102, 241, 0.35)', color: '#818cf8', fontWeight: 600 }}
-                title="ดูคู่มือโครงสร้างระบบและการทำงาน"
-              >
-                📘 คู่มือระบบ
-              </button>
+                    {user.role === 'admin' && (
+                      <button
+                        onClick={() => {
+                          setIsNavDropdownOpen(false);
+                          handleSetTicketId(null);
+                          setCurrentView('default');
+                          setAdminView('dashboard');
+                        }}
+                        style={{
+                          width: '100%',
+                          textAlign: 'left',
+                          padding: '0.65rem 0.85rem',
+                          borderRadius: '10px',
+                          border: 'none',
+                          background: currentView === 'default' && adminView === 'dashboard' ? 'rgba(99, 102, 241, 0.12)' : 'transparent',
+                          color: currentView === 'default' && adminView === 'dashboard' ? '#4f46e5' : '#1e293b',
+                          fontWeight: currentView === 'default' && adminView === 'dashboard' ? 700 : 600,
+                          fontSize: '0.85rem',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.6rem',
+                          marginBottom: '0.2rem',
+                          transition: 'background 0.2s'
+                        }}
+                        onMouseEnter={(e) => { if (!(currentView === 'default' && adminView === 'dashboard')) e.currentTarget.style.background = '#f8fafc'; }}
+                        onMouseLeave={(e) => { if (!(currentView === 'default' && adminView === 'dashboard')) e.currentTarget.style.background = 'transparent'; }}
+                      >
+                        <span style={{ fontSize: '1rem' }}>📊</span>
+                        <span>ดูรายงานสรุป (Analytics)</span>
+                      </button>
+                    )}
+
+                    {user.role === 'admin' && (
+                      <button
+                        onClick={() => {
+                          setIsNavDropdownOpen(false);
+                          handleSetTicketId(null);
+                          setCurrentView('default');
+                          setAdminView('config');
+                        }}
+                        style={{
+                          width: '100%',
+                          textAlign: 'left',
+                          padding: '0.65rem 0.85rem',
+                          borderRadius: '10px',
+                          border: 'none',
+                          background: currentView === 'default' && adminView === 'config' ? 'rgba(99, 102, 241, 0.12)' : 'transparent',
+                          color: currentView === 'default' && adminView === 'config' ? '#4f46e5' : '#1e293b',
+                          fontWeight: currentView === 'default' && adminView === 'config' ? 700 : 600,
+                          fontSize: '0.85rem',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.6rem',
+                          marginBottom: '0.2rem',
+                          transition: 'background 0.2s'
+                        }}
+                        onMouseEnter={(e) => { if (!(currentView === 'default' && adminView === 'config')) e.currentTarget.style.background = '#f8fafc'; }}
+                        onMouseLeave={(e) => { if (!(currentView === 'default' && adminView === 'config')) e.currentTarget.style.background = 'transparent'; }}
+                      >
+                        <span style={{ fontSize: '1rem' }}>⚙️</span>
+                        <span>จัดการระบบ (Configuration)</span>
+                      </button>
+                    )}
+
+                    <button
+                      onClick={() => {
+                        setIsNavDropdownOpen(false);
+                        handleSetTicketId(null);
+                        setCurrentView('matrix');
+                      }}
+                      style={{
+                        width: '100%',
+                        textAlign: 'left',
+                        padding: '0.65rem 0.85rem',
+                        borderRadius: '10px',
+                        border: 'none',
+                        background: currentView === 'matrix' ? 'rgba(99, 102, 241, 0.12)' : 'transparent',
+                        color: currentView === 'matrix' ? '#4f46e5' : '#1e293b',
+                        fontWeight: currentView === 'matrix' ? 700 : 600,
+                        fontSize: '0.85rem',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.6rem',
+                        marginBottom: '0.2rem',
+                        transition: 'background 0.2s'
+                      }}
+                      onMouseEnter={(e) => { if (currentView !== 'matrix') e.currentTarget.style.background = '#f8fafc'; }}
+                      onMouseLeave={(e) => { if (currentView !== 'matrix') e.currentTarget.style.background = 'transparent'; }}
+                    >
+                      <span style={{ fontSize: '1rem' }}>🔍</span>
+                      <span>Compatibility Matrix</span>
+                    </button>
+
+                    {user.role === 'admin' && (
+                      <>
+                        <div style={{ height: '1px', background: 'rgba(0, 0, 0, 0.06)', margin: '0.35rem 0' }}></div>
+
+                        <button
+                          onClick={() => {
+                            setIsNavDropdownOpen(false);
+                            setIsGuideModalOpen(true);
+                          }}
+                          style={{
+                            width: '100%',
+                            textAlign: 'left',
+                            padding: '0.65rem 0.85rem',
+                            borderRadius: '10px',
+                            border: 'none',
+                            background: 'transparent',
+                            color: '#1e293b',
+                            fontWeight: 600,
+                            fontSize: '0.85rem',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.6rem',
+                            transition: 'background 0.2s'
+                          }}
+                          onMouseEnter={(e) => e.currentTarget.style.background = '#f8fafc'}
+                          onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                        >
+                          <span style={{ fontSize: '1rem' }}>📘</span>
+                          <span>คู่มือระบบ</span>
+                        </button>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
             )}
 
              {/* Notification Bell Center */}
@@ -560,19 +790,21 @@ function MainAppContent() {
 
       {/* Pages Container */}
       <main style={{ flexGrow: 1 }}>
-        {selectedTicketId !== null ? (
+        {currentView === 'matrix' ? (
+          <CompatibilityMatrix />
+        ) : selectedTicketId !== null ? (
           <TicketDetail
             ticketId={selectedTicketId}
             onBack={() => handleSetTicketId(null)}
           />
         ) : user.role === 'admin' && adminView === 'dashboard' ? (
-          <AdminDashboard onNavigateToTickets={() => setAdminView('tickets')} onViewTicket={handleSetTicketId} refreshKey={refreshKey} />
+          <AdminDashboard onNavigateToTickets={() => setAdminView('tickets')} onViewTicket={handleSetTicketId} refreshKey={refreshKey} onCreateTicket={() => setIsModalOpen(true)} />
         ) : user.role === 'admin' && adminView === 'config' ? (
-          <AgentDashboard key="config" onViewTicket={handleSetTicketId} initialTab="config" refreshKey={refreshKey} />
+          <AgentDashboard key="config" onViewTicket={handleSetTicketId} initialTab="config" refreshKey={refreshKey} onCreateTicket={() => setIsModalOpen(true)} />
         ) : user.role === 'agent' || (user.role === 'admin' && adminView === 'tickets') ? (
-          <AgentDashboard key="dashboard" onViewTicket={handleSetTicketId} initialTab="queue" refreshKey={refreshKey} />
+          <AgentDashboard key="dashboard" onViewTicket={handleSetTicketId} initialTab="queue" refreshKey={refreshKey} onCreateTicket={() => setIsModalOpen(true)} />
         ) : (
-          <CustomerDashboard onViewTicket={handleSetTicketId} refreshKey={refreshKey} />
+          <CustomerDashboard onViewTicket={handleSetTicketId} refreshKey={refreshKey} onCreateTicket={() => setIsModalOpen(true)} />
         )}
       </main>
 

@@ -7,7 +7,7 @@ import ModuleProgramManagement from '../components/config/ModuleProgramManagemen
 import SupportStatManagement from '../components/config/SupportStatManagement';
 import CustomerContactManagement from '../components/config/CustomerContactManagement';
 
-export default function AgentDashboard({ onViewTicket, initialTab = 'queue', refreshKey }) {
+export default function AgentDashboard({ onViewTicket, initialTab = 'queue', refreshKey, onCreateTicket }) {
   const { user, token, API_URL } = useAuth();
   const [tickets, setTickets] = useState([]);
   const [stats, setStats] = useState({
@@ -674,7 +674,33 @@ export default function AgentDashboard({ onViewTicket, initialTab = 'queue', ref
         <h1 className="page-title-gradient">
           {activeTab === 'config' ? '⚙️ จัดการระบบ (System Configuration)' : 'Ticket Management'}
         </h1>
-        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
+          {activeTab !== 'config' && onCreateTicket && (
+            <button 
+              className="btn btn-primary" 
+              onClick={onCreateTicket}
+              style={{ 
+                padding: '0.55rem 1.25rem', 
+                fontSize: '0.875rem', 
+                background: 'linear-gradient(135deg, #10b981, #059669)', 
+                border: 'none', 
+                color: 'white', 
+                fontWeight: 'bold',
+                borderRadius: '12px',
+                boxShadow: '0 4px 14px rgba(16, 185, 129, 0.3)',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.4rem',
+                transition: 'transform 0.2s ease'
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
+              onMouseLeave={(e) => e.currentTarget.style.transform = 'none'}
+            >
+              <span>➕</span>
+              <span>สร้างเคสใหม่</span>
+            </button>
+          )}
           {activeTab !== 'config' && (
             <select 
               className="glass-input" 

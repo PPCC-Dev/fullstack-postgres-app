@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 
-export default function CustomerDashboard({ onViewTicket, refreshKey }) {
+export default function CustomerDashboard({ onViewTicket, refreshKey, onCreateTicket }) {
   const { user, token, API_URL } = useAuth();
   const [tickets, setTickets] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -142,6 +142,33 @@ export default function CustomerDashboard({ onViewTicket, refreshKey }) {
           <h1 className="page-title-gradient">ศูนย์ช่วยเหลือของคุณ</h1>
           <p className="subtitle-text" style={{ marginBottom: 0 }}>ส่งคำขอความช่วยเหลือ ติดตามผล และพูดคุยกับเจ้าหน้าที่ของเราได้ตลอด 24 ชั่วโมง</p>
         </div>
+
+        {onCreateTicket && (
+          <button 
+            className="btn btn-primary" 
+            onClick={onCreateTicket}
+            style={{ 
+              padding: '0.65rem 1.5rem', 
+              fontSize: '0.95rem', 
+              background: 'linear-gradient(135deg, #10b981, #059669)', 
+              border: 'none', 
+              color: 'white', 
+              fontWeight: 'bold',
+              borderRadius: '12px',
+              boxShadow: '0 4px 14px rgba(16, 185, 129, 0.3)',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              transition: 'transform 0.2s ease'
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
+            onMouseLeave={(e) => e.currentTarget.style.transform = 'none'}
+          >
+            <span style={{ fontSize: '1.1rem' }}>➕</span>
+            <span>สร้างเคสใหม่</span>
+          </button>
+        )}
       </div>
 
       {/* Stats row */}

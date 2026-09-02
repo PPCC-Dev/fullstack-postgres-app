@@ -9,6 +9,8 @@ import reportRoutes from './routes/reportRoutes.js';
 import customerRoutes from './routes/customerRoutes.js';
 import notificationRoutes from './routes/notificationRoutes.js';
 import customerContactRoutes from './routes/customerContactRoutes.js';
+import compatibilityRoutes from './routes/compatibilityRoutes.js';
+import { initAndImportCompatibilityMatrix } from './services/compatibilityImporter.js';
 import pool from './config/db.js';
 
 dotenv.config(); // Reload env changes
@@ -66,6 +68,7 @@ app.use('/api/reports', reportRoutes);
 app.use('/api/customers', customerRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/contacts', customerContactRoutes);
+app.use('/api/compatibility', compatibilityRoutes);
 
 // 404 Route handler
 app.use((req, res, next) => {
@@ -119,6 +122,7 @@ const initDatabaseSchema = async () => {
 // Start Server
 const startServer = async () => {
   await initDatabaseSchema();
+  await initAndImportCompatibilityMatrix(false);
   app.listen(PORT, () => {
     console.log(`=================================================`);
     console.log(`🚀 PPCC Care Server running on port ${PORT}`);
