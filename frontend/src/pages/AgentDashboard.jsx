@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import { lazy, useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import CustomerManagement from '../components/config/CustomerManagement';
-import ProgramTypeManagement from '../components/config/ProgramTypeManagement';
-import IssueTypeManagement from '../components/config/IssueTypeManagement';
-import ModuleProgramManagement from '../components/config/ModuleProgramManagement';
-import SupportStatManagement from '../components/config/SupportStatManagement';
-import CustomerContactManagement from '../components/config/CustomerContactManagement';
+const CustomerManagement = lazy(() => import('../components/config/CustomerManagement'));
+const ProgramTypeManagement = lazy(() => import('../components/config/ProgramTypeManagement'));
+const IssueTypeManagement = lazy(() => import('../components/config/IssueTypeManagement'));
+const ModuleProgramManagement = lazy(() => import('../components/config/ModuleProgramManagement'));
+const SupportStatManagement = lazy(() => import('../components/config/SupportStatManagement'));
+const CustomerContactManagement = lazy(() => import('../components/config/CustomerContactManagement'));
 
 export default function AgentDashboard({ onViewTicket, initialTab = 'queue', refreshKey, onCreateTicket }) {
   const { user, token, API_URL } = useAuth();
@@ -446,7 +446,6 @@ export default function AgentDashboard({ onViewTicket, initialTab = 'queue', ref
   useEffect(() => {
     if (token) {
       fetchData();
-      fetchMembers();
     }
   }, [token, refreshKey]);
 

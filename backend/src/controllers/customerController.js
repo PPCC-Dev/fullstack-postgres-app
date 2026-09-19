@@ -1,9 +1,17 @@
 import pool from '../config/db.js';
 
-// Get all customers
+// Get all customers (Filtered by cust_num for customers, all for agents/admins)
 export const getCustomers = async (req, res) => {
   try {
-    const result = await pool.query('SELECT * FROM customers ORDER BY cust_name ASC');
+    let result;
+    if (req.user.role === 'customer') {
+      result = await pool.query(
+        'SELECT id, cust_num, cust_name, prefix, version FROM customers WHERE cust_num = $1 ORDER BY cust_name ASC',
+        [req.user.cust_num]
+      );
+    } else {
+      result = await pool.query('SELECT * FROM customers ORDER BY cust_name ASC');
+    }
     res.json(result.rows);
   } catch (err) {
     console.error(err);

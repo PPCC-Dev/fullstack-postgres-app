@@ -92,9 +92,25 @@ async function getCustomerContactEmail(custNum) {
   return null;
 }
 
+// HTML escape helper to prevent Email HTML injection
+export function escapeHtml(str) {
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+export const formatMultilineHtml = (str) => {
+  if (!str) return '-';
+  return escapeHtml(str).replace(/\n/g, '<br/>');
+};
+
 const getFormattedTicketEmailHTML = (ticket, type, headline, typeLabel, messageUpdateHtml = '') => {
   const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:5173';
-  const ticketLink = `${CLIENT_URL}/?ticketId=${ticket.id}`;
+  const ticketLink = `${CLIENT_URL}/?ticketId=${encodeURIComponent(ticket.id)}`;
   
   let priorityLabel = 'ปานกลาง (Medium)';
   let priorityStyle = 'background-color: #fef3c7; color: #d97706; border: 1px solid #fcd34d;';
@@ -116,11 +132,19 @@ const getFormattedTicketEmailHTML = (ticket, type, headline, typeLabel, messageU
     statusStyle = 'background-color: #dcfce7; color: #15803d; border: 1px solid #86efac;';
   }
 
-  let agentName = ticket.agent_name || 'ยังไม่มีผู้รับผิดชอบ';
+  const safeTitle = escapeHtml(ticket.title);
+  const safeLogId = escapeHtml(ticket.ticket_number || ('#' + ticket.id));
+  const safeModule = escapeHtml(ticket.moduleDescription || ticket.module || '-');
+  const safeProgramType = escapeHtml(ticket.program_type || 'Standard');
+  const safeIssueType = escapeHtml(ticket.issue_type || 'Technical');
+  const safeFormName = escapeHtml(ticket.form_name || '-');
+  const safeAgentName = escapeHtml(ticket.agent_name || 'ยังไม่มีผู้รับผิดชอบ');
+  const safeHeadline = escapeHtml(headline);
+  const safeTypeLabel = escapeHtml(typeLabel);
 
-  let displayDescription = ticket.description ? ticket.description.replace(/\n/g, '<br/>') : '-';
+  let displayDescription = ticket.description ? formatMultilineHtml(ticket.description) : '-';
   if (messageUpdateHtml && ticket.description && ticket.description.length > 250) {
-    displayDescription = ticket.description.substring(0, 250).replace(/\n/g, '<br/>') + '... <br/><br/><i style="color:#64748b;">(รายละเอียดปัญหามีความยาวมาก สามารถอ่านฉบับเต็มได้ในระบบ)</i>';
+    displayDescription = formatMultilineHtml(ticket.description.substring(0, 250)) + '... <br/><br/><i style="color:#64748b;">(รายละเอียดปัญหามีความยาวมาก สามารถอ่านฉบับเต็มได้ในระบบ)</i>';
   }
 
   let resolutionBlock = '';
@@ -132,7 +156,7 @@ const getFormattedTicketEmailHTML = (ticket, type, headline, typeLabel, messageU
       <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; margin-bottom: 24px; text-align: left;">
         <tr>
           <td style="padding: 16px; font-size: 0.88rem; color: #15803d; line-height: 1.6;">
-            ${ticket.solution.replace(/\n/g, '<br/>')}
+            ${formatMultilineHtml(ticket.solution)}
           </td>
         </tr>
       </table>
@@ -148,7 +172,7 @@ const getFormattedTicketEmailHTML = (ticket, type, headline, typeLabel, messageU
       <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #fffbeb; border: 1px solid #fef08a; border-radius: 8px; margin-bottom: 24px; text-align: left;">
         <tr>
           <td style="padding: 16px; font-size: 0.88rem; color: #a16207; line-height: 1.6;">
-            ${ticket.workaround.replace(/\n/g, '<br/>')}
+            ${formatMultilineHtml(ticket.workaround)}
           </td>
         </tr>
       </table>
@@ -174,7 +198,7 @@ const getFormattedTicketEmailHTML = (ticket, type, headline, typeLabel, messageU
           <tr>
             <td bgcolor="#004bb5" style="background-color: #004bb5; padding: 35px 30px; text-align: center;">
               <span style="display: inline-block; background-color: #003a8c; color: #ffffff; padding: 5px 14px; border-radius: 20px; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 12px; border: 1px solid #1a66cc;">
-                ${typeLabel}
+                ${safeTypeLabel}
               </span>
               <h1 style="color: #ffffff; margin: 0; font-size: 1.65rem; font-weight: 800; letter-spacing: -0.025em; line-height: 1.2;">
                 PPCC Care Portal
@@ -190,7 +214,7 @@ const getFormattedTicketEmailHTML = (ticket, type, headline, typeLabel, messageU
             <td style="padding: 30px 30px 20px 30px;">
               <!-- Greeting / Summary -->
               <h2 style="color: #0f172a; font-size: 1.2rem; font-weight: 700; margin: 0 0 8px 0; line-height: 1.35;">
-                ${headline}
+                ${safeHeadline}
               </h2>
               <p style="color: #475569; font-size: 0.88rem; line-height: 1.5; margin: 0 0 20px 0;">
                 เคสบริการช่วยเหลือของคุณได้รับการประมวลผลและปรับเปลี่ยนความเคลื่อนไหวในระบบเรียบร้อยแล้ว โดยมีรายละเอียดดังต่อไปนี้ครับ:
@@ -202,7 +226,7 @@ const getFormattedTicketEmailHTML = (ticket, type, headline, typeLabel, messageU
                   <td style="padding: 12px 16px;">
                     <div style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: #64748b; letter-spacing: 0.05em; margin-bottom: 4px;">หัวเรื่องเคสช่วยเหลือ (Ticket Title)</div>
                     <div style="font-size: 1.05rem; font-weight: 700; color: #0f172a; line-height: 1.4;">
-                      ${ticket.title}
+                      ${safeTitle}
                     </div>
                   </td>
                 </tr>
@@ -222,7 +246,7 @@ const getFormattedTicketEmailHTML = (ticket, type, headline, typeLabel, messageU
                   <td width="50%" valign="top" style="padding-bottom: 12px; padding-right: 10px;">
                     <span style="display: block; font-size: 0.75rem; font-weight: 700; color: #64748b; text-transform: uppercase; margin-bottom: 2px;">🔗 LogId</span>
                     <a href="${ticketLink}" style="font-size: 0.92rem; font-weight: 700; color: #004bb5; text-decoration: underline;">
-                      ${ticket.ticket_number || ('#' + ticket.id)}
+                      ${safeLogId}
                     </a>
                   </td>
                   <td width="50%" valign="top" style="padding-bottom: 12px;">
@@ -237,7 +261,7 @@ const getFormattedTicketEmailHTML = (ticket, type, headline, typeLabel, messageU
                 <tr>
                   <td width="50%" valign="top" style="padding-bottom: 12px; padding-right: 10px;">
                     <span style="display: block; font-size: 0.75rem; font-weight: 700; color: #64748b; text-transform: uppercase; margin-bottom: 2px;">🧩 ระบบงาน (Module)</span>
-                    <span style="font-size: 0.9rem; font-weight: 600; color: #1e293b;">${ticket.moduleDescription || ticket.module || '-'}</span>
+                    <span style="font-size: 0.9rem; font-weight: 600; color: #1e293b;">${safeModule}</span>
                   </td>
                   <td width="50%" valign="top" style="padding-bottom: 12px;">
                     <span style="display: block; font-size: 0.75rem; font-weight: 700; color: #64748b; text-transform: uppercase; margin-bottom: 2px;">📌 สถานะปัจจุบัน (Status)</span>
@@ -251,11 +275,11 @@ const getFormattedTicketEmailHTML = (ticket, type, headline, typeLabel, messageU
                 <tr>
                   <td width="50%" valign="top" style="padding-bottom: 12px; padding-right: 10px;">
                     <span style="display: block; font-size: 0.75rem; font-weight: 700; color: #64748b; text-transform: uppercase; margin-bottom: 2px;">💻 ประเภทโปรแกรม (Program Type)</span>
-                    <span style="font-size: 0.9rem; font-weight: 600; color: #1e293b;">${ticket.program_type || 'Standard'}</span>
+                    <span style="font-size: 0.9rem; font-weight: 600; color: #1e293b;">${safeProgramType}</span>
                   </td>
                   <td width="50%" valign="top" style="padding-bottom: 12px;">
                     <span style="display: block; font-size: 0.75rem; font-weight: 700; color: #64748b; text-transform: uppercase; margin-bottom: 2px;">⚠️ ประเภทปัญหา (Issue Type)</span>
-                    <span style="font-size: 0.9rem; font-weight: 600; color: #1e293b;">${ticket.issue_type || 'Technical'}</span>
+                    <span style="font-size: 0.9rem; font-weight: 600; color: #1e293b;">${safeIssueType}</span>
                   </td>
                 </tr>
 
@@ -263,11 +287,11 @@ const getFormattedTicketEmailHTML = (ticket, type, headline, typeLabel, messageU
                 <tr>
                   <td width="50%" valign="top" style="padding-bottom: 12px; padding-right: 10px;">
                     <span style="display: block; font-size: 0.75rem; font-weight: 700; color: #64748b; text-transform: uppercase; margin-bottom: 2px;">🖥️ หน้าจอทำงาน (Form Name)</span>
-                    <span style="font-size: 0.9rem; font-weight: 600; color: #1e293b;">${ticket.form_name || '-'}</span>
+                    <span style="font-size: 0.9rem; font-weight: 600; color: #1e293b;">${safeFormName}</span>
                   </td>
                   <td width="50%" valign="top" style="padding-bottom: 12px;">
                     <span style="display: block; font-size: 0.75rem; font-weight: 700; color: #64748b; text-transform: uppercase; margin-bottom: 2px;">👤 ผู้รับผิดชอบ (Assigned To)</span>
-                    <span style="font-size: 0.9rem; font-weight: 600; color: #1e293b;">${agentName}</span>
+                    <span style="font-size: 0.9rem; font-weight: 600; color: #1e293b;">${safeAgentName}</span>
                   </td>
                 </tr>
               </table>
@@ -359,14 +383,17 @@ export const sendTicketUpdatedEmail = async (ticket, toEmail, ccEmail = null, me
   const headline = `💬 มีการตอบกลับหรืออัปเดตข้อมูลเคสช่วยเหลือ`;
   const typeLabel = `อัปเดตสถานะเคส (Ticket Updated)`;
   
+  const safeSenderName = escapeHtml(senderName);
+  const safeMessageBody = formatMultilineHtml(messageBody);
+
   const messageUpdateHtml = `
     <h3 style="color: #0f172a; font-size: 0.95rem; font-weight: 700; margin: 0 0 10px 0; text-transform: uppercase; letter-spacing: 0.02em;">
-      💬 ข้อความตอบกลับล่าสุดจาก: ${senderName}
+      💬 ข้อความตอบกลับล่าสุดจาก: ${safeSenderName}
     </h3>
     <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #f1f5f9; border-left: 4px solid #004bb5; border-radius: 4px; margin-bottom: 24px; text-align: left;">
       <tr>
         <td style="padding: 14px 16px; font-size: 0.88rem; color: #334155; line-height: 1.5; font-style: italic;">
-          "${messageBody.replace(/\n/g, '<br/>')}"
+          "${safeMessageBody}"
         </td>
       </tr>
     </table>
@@ -401,6 +428,8 @@ export const sendTicketChangedEmail = async (ticket, toEmail, ccEmail = null, ch
   const headline = `🔄 มีการอัปเดตข้อมูลเคสช่วยเหลือ`;
   const typeLabel = `อัปเดตข้อมูล (Ticket Updated)`;
   
+  const safeChangeDescription = formatMultilineHtml(changeDescription);
+
   const messageUpdateHtml = `
     <h3 style="color: #0f172a; font-size: 0.95rem; font-weight: 700; margin: 0 0 10px 0; text-transform: uppercase; letter-spacing: 0.02em;">
       📝 รายละเอียดการเปลี่ยนแปลง
@@ -408,7 +437,7 @@ export const sendTicketChangedEmail = async (ticket, toEmail, ccEmail = null, ch
     <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #f1f5f9; border-left: 4px solid #004bb5; border-radius: 4px; margin-bottom: 24px; text-align: left;">
       <tr>
         <td style="padding: 14px 16px; font-size: 0.88rem; color: #334155; line-height: 1.5;">
-          ${changeDescription}
+          ${safeChangeDescription}
         </td>
       </tr>
     </table>

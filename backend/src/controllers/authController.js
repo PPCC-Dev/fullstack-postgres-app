@@ -4,10 +4,15 @@ import pool from '../config/db.js';
 import dotenv from 'dotenv';
 import crypto from 'crypto';
 import { sendPasswordResetEmail } from '../services/emailService.js';
+import { isValidPassword, PASSWORD_POLICY_MESSAGE } from '../utils/passwordPolicy.js';
 
 dotenv.config();
 
-const JWT_SECRET = process.env.JWT_SECRET || 'supersecretkeyforapexsupportdesk2026!';
+const JWT_SECRET = process.env.JWT_SECRET;
+
+if (!JWT_SECRET) {
+  throw new Error('JWT_SECRET must be configured before starting the backend.');
+}
 
 // 1. Register User
 export const register = async (req, res) => {
@@ -25,10 +30,9 @@ export const register = async (req, res) => {
   }
 
   // Validate password strength (at least 6 chars, 1 lowercase, 1 uppercase, 1 digit, 1 special char)
-  const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]).{6,}$/;
-  if (!passwordRegex.test(password)) {
+  if (!isValidPassword(password)) {
     return res.status(400).json({ 
-      error: 'รหัสผ่านต้องมีความยาวอย่างน้อย 6 ตัวอักษร และประกอบด้วยตัวอักษรพิมพ์เล็ก (a-z) พิมพ์ใหญ่ (A-Z) ตัวเลข (0-9) และอักขระพิเศษอย่างน้อยอย่างละ 1 ตัว' 
+      error: PASSWORD_POLICY_MESSAGE
     });
   }
 
@@ -176,7 +180,7 @@ export const getAllUsers = async (req, res) => {
   }
 };
 
-// 5. Update User Data (Agent Only)
+// 5. Update User Data (Agent / Admin)
 export const updateUser = async (req, res) => {
   const { id } = req.params;
   let { role, custNum, is_verified, name, email } = req.body;
@@ -186,13 +190,37 @@ export const updateUser = async (req, res) => {
   }
 
   try {
+    // Check target user existence and permissions
+    const targetUserCheck = await pool.query(
+      `SELECT u.*, COALESCE(r.base_role, u.role) as base_role 
+       FROM users u 
+       LEFT JOIN roles r ON LOWER(u.role) = LOWER(r.name) 
+       WHERE u.id = $1`, 
+      [id]
+    );
+    if (targetUserCheck.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found.' });
+    }
+    const targetUser = targetUserCheck.rows[0];
+
+    // Non-admins cannot modify admin accounts
+    if (targetUser.base_role?.toLowerCase() === 'admin' && req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'Access denied. Only administrators can modify admin accounts.' });
+    }
+
     // Validate that the role exists in roles table
     if (role) {
-      const roleCheck = await pool.query('SELECT name FROM roles WHERE LOWER(name) = LOWER($1)', [role]);
+      const roleCheck = await pool.query('SELECT name, base_role FROM roles WHERE LOWER(name) = LOWER($1)', [role]);
       if (roleCheck.rows.length === 0) {
         return res.status(400).json({ error: 'Invalid role.' });
       }
-      role = roleCheck.rows[0].name; // ensure exact casing
+      const selectedRole = roleCheck.rows[0];
+
+      // Non-admins cannot assign admin roles
+      if (selectedRole.base_role?.toLowerCase() === 'admin' && req.user.role !== 'admin') {
+        return res.status(403).json({ error: 'Access denied. Only administrators can assign admin roles.' });
+      }
+      role = selectedRole.name; // ensure exact casing
     }
 
     const result = await pool.query(
@@ -207,10 +235,6 @@ export const updateUser = async (req, res) => {
       [role || null, custNum || null, is_verified !== undefined ? is_verified : null, id, name || null, email ? email.toLowerCase() : null]
     );
 
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'User not found.' });
-    }
-
     return res.status(200).json({
       message: 'User updated successfully.',
       user: result.rows[0]
@@ -221,7 +245,7 @@ export const updateUser = async (req, res) => {
   }
 };
 
-// 6. Delete User (Agent Only)
+// 6. Delete User (Admin / Agent with restrictions)
 export const deleteUser = async (req, res) => {
   const { id } = req.params;
 
@@ -230,9 +254,21 @@ export const deleteUser = async (req, res) => {
   }
 
   try {
-    const checkUser = await pool.query('SELECT * FROM users WHERE id = $1', [id]);
+    const checkUser = await pool.query(
+      `SELECT u.*, COALESCE(r.base_role, u.role) as base_role 
+       FROM users u 
+       LEFT JOIN roles r ON LOWER(u.role) = LOWER(r.name) 
+       WHERE u.id = $1`, 
+      [id]
+    );
     if (checkUser.rows.length === 0) {
       return res.status(404).json({ error: 'User not found.' });
+    }
+    const targetUser = checkUser.rows[0];
+
+    // Non-admins cannot delete admin accounts
+    if (targetUser.base_role?.toLowerCase() === 'admin' && req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'Access denied. Only administrators can delete admin accounts.' });
     }
 
     await pool.query('DELETE FROM users WHERE id = $1', [id]);
@@ -283,10 +319,9 @@ export const changePassword = async (req, res) => {
     return res.status(400).json({ error: 'กรุณากรอกรหัสผ่านปัจจุบันและรหัสผ่านใหม่' });
   }
 
-  const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]).{6,}$/;
-  if (!passwordRegex.test(newPassword)) {
+  if (!isValidPassword(newPassword)) {
     return res.status(400).json({ 
-      error: 'รหัสผ่านใหม่ต้องมีความยาวอย่างน้อย 6 ตัวอักษร และประกอบด้วยตัวอักษรพิมพ์เล็ก (a-z) พิมพ์ใหญ่ (A-Z) ตัวเลข (0-9) และอักขระพิเศษอย่างน้อยอย่างละ 1 ตัว' 
+      error: PASSWORD_POLICY_MESSAGE
     });
   }
 
@@ -364,10 +399,9 @@ export const resetPassword = async (req, res) => {
     return res.status(400).json({ error: 'ข้อมูลไม่ครบถ้วน (Missing token or new password)' });
   }
 
-  const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]).{6,}$/;
-  if (!passwordRegex.test(newPassword)) {
+  if (!isValidPassword(newPassword)) {
     return res.status(400).json({ 
-      error: 'รหัสผ่านใหม่ต้องมีความยาวอย่างน้อย 6 ตัวอักษร และประกอบด้วยตัวอักษรพิมพ์เล็ก (a-z) พิมพ์ใหญ่ (A-Z) ตัวเลข (0-9) และอักขระพิเศษอย่างน้อยอย่างละ 1 ตัว' 
+      error: PASSWORD_POLICY_MESSAGE
     });
   }
 

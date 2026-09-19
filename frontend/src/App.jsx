@@ -1,16 +1,17 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { lazy, Suspense, useState, useEffect, useRef, useCallback } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
-import CreateTicketModal from './components/CreateTicketModal';
-import Login from './pages/Login';
-import Register from './pages/Register';
-import CustomerDashboard from './pages/CustomerDashboard';
-import AgentDashboard from './pages/AgentDashboard';
-import AdminDashboard from './pages/AdminDashboard';
-import TicketDetail from './pages/TicketDetail';
-import ForgotPassword from './pages/ForgotPassword';
-import ResetPassword from './pages/ResetPassword';
-import CompatibilityMatrix from './pages/CompatibilityMatrix';
-import SystemGuideModal from './components/SystemGuideModal';
+const CreateTicketModal = lazy(() => import('./components/CreateTicketModal'));
+const Login = lazy(() => import('./pages/Login'));
+const Register = lazy(() => import('./pages/Register'));
+const CustomerDashboard = lazy(() => import('./pages/CustomerDashboard'));
+const AgentDashboard = lazy(() => import('./pages/AgentDashboard'));
+const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
+const TicketDetail = lazy(() => import('./pages/TicketDetail'));
+const ForgotPassword = lazy(() => import('./pages/ForgotPassword'));
+const ResetPassword = lazy(() => import('./pages/ResetPassword'));
+const CompatibilityMatrix = lazy(() => import('./pages/CompatibilityMatrix'));
+const SystemGuideModal = lazy(() => import('./components/SystemGuideModal'));
+import { isValidPassword, PASSWORD_POLICY_MESSAGE } from './utils/passwordPolicy';
 
 function ProfileModal({ isOpen, onClose, onOpenMatrix }) {
   const { user, updateProfile, changePassword } = useAuth();
@@ -27,31 +28,13 @@ function ProfileModal({ isOpen, onClose, onOpenMatrix }) {
   const [pwError, setPwError] = useState('');
   const [pwSuccess, setPwSuccess] = useState('');
   const [pwSubmitting, setPwSubmitting] = useState(false);
-  const [showPasswordSection, setShowPasswordSection] = useState(false);
-  const [companiesList, setCompaniesList] = useState([]);
-  const { API_URL, token } = useAuth();
-
-  useEffect(() => {
-    if (isOpen && API_URL) {
-      const fetchCompanies = async () => {
-        try {
-          const response = await fetch(`${API_URL}/auth/companies`);
-          if (response.ok) {
-            const data = await response.json();
-            setCompaniesList(data);
-          }
-        } catch (error) {
-          console.error('Error fetching companies in profile:', error);
-        }
-      };
-      fetchCompanies();
-    }
-  }, [isOpen, API_URL]);
 
   // Sync state when user profile is loaded
   useEffect(() => {
     if (user) {
+      // Profile form state must sync when the authenticated profile changes.
       setName(user.name || '');
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setCustNum(user.cust_num || '');
     }
   }, [user]);
@@ -96,9 +79,8 @@ function ProfileModal({ isOpen, onClose, onOpenMatrix }) {
       return;
     }
 
-    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]).{6,}$/;
-    if (!passwordRegex.test(newPassword)) {
-      setPwError('รหัสผ่านใหม่ต้องมีความยาวอย่างน้อย 6 ตัวอักษร และประกอบด้วยตัวอักษรพิมพ์เล็ก (a-z) พิมพ์ใหญ่ (A-Z) ตัวเลข (0-9) และอักขระพิเศษอย่างน้อยอย่างละ 1 ตัว');
+    if (!isValidPassword(newPassword)) {
+      setPwError(PASSWORD_POLICY_MESSAGE);
       setPwSubmitting(false);
       return;
     }
@@ -119,7 +101,6 @@ function ProfileModal({ isOpen, onClose, onOpenMatrix }) {
       setConfirmPassword('');
       setTimeout(() => {
         setPwSuccess('');
-        setShowPasswordSection(false);
       }, 1500);
     } else {
       setPwError(result.error || 'เกิดข้อผิดพลาดในการเปลี่ยนรหัสผ่าน');
@@ -128,13 +109,13 @@ function ProfileModal({ isOpen, onClose, onOpenMatrix }) {
 
   return (
     <div className="modal-overlay" style={{ zIndex: 99999 }}>
-      <div className="glass-card modal-content glow-purple" style={{ maxWidth: '880px', width: '95%', textAlign: 'left', padding: '2rem 2.5rem' }}>
-        <button className="modal-close" onClick={onClose}>&times;</button>
-        <h2 style={{ marginBottom: '1.5rem', background: 'linear-gradient(135deg, #6366f1, #00e5ff)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', fontWeight: 'bold' }}>
+      <div className="glass-card modal-content glow-purple" role="dialog" aria-modal="true" aria-labelledby="profile-settings-title" style={{ maxWidth: '880px', width: '95%', textAlign: 'left', padding: '2rem 2.5rem' }}>
+        <button className="modal-close" onClick={onClose} aria-label="ปิดหน้าต่างตั้งค่าข้อมูลส่วนตัว">&times;</button>
+        <h2 id="profile-settings-title" style={{ marginBottom: '1.5rem', background: 'linear-gradient(135deg, #6366f1, #00e5ff)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', fontWeight: 'bold' }}>
           ⚙️ ตั้งค่าข้อมูลส่วนตัว (Profile Settings)
         </h2>
 
-        <div style={{ 
+        <div className="profile-settings-grid" style={{
           display: 'grid', 
           gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', 
           gap: '2.5rem',
@@ -380,7 +361,7 @@ function MainAppContent() {
   const [isGuideModalOpen, setIsGuideModalOpen] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
 
-  const fetchNotifications = async () => {
+  const fetchNotifications = useCallback(async () => {
     if (!token) return;
     try {
       const res = await fetch(`${API_URL}/notifications`, {
@@ -396,15 +377,16 @@ function MainAppContent() {
     } catch (err) {
       console.error('Error fetching notifications:', err);
     }
-  };
+  }, [API_URL, token]);
 
   useEffect(() => {
     if (user && token) {
+      // Polling is an external side effect; the request updates notification state asynchronously.
       fetchNotifications();
       const interval = setInterval(fetchNotifications, 15000); // Poll every 15 seconds
       return () => clearInterval(interval);
     }
-  }, [user, token]);
+  }, [user, token, fetchNotifications]);
 
   useEffect(() => {
     function handleClickOutside(event) {
@@ -472,20 +454,23 @@ function MainAppContent() {
   // 2. Unauthenticated State (Show Login or Register or Forgot/Reset Password)
   if (!user) {
     if (authView === 'forgot-password') {
-      return <ForgotPassword onToggleView={setAuthView} />;
+      return <Suspense fallback={<div className="page-loading-state">กำลังโหลดหน้า...</div>}><ForgotPassword onToggleView={setAuthView} /></Suspense>;
     }
     if (authView === 'reset-password') {
-      return <ResetPassword onToggleView={setAuthView} token={resetTokenParam} />;
+      return <Suspense fallback={<div className="page-loading-state">กำลังโหลดหน้า...</div>}><ResetPassword onToggleView={setAuthView} token={resetTokenParam} /></Suspense>;
     }
-    return authView === 'login' ? (
-      <Login onToggleView={setAuthView} onAuthSuccess={() => handleSetTicketId(null)} />
-    ) : (
-      <Register onToggleView={setAuthView} onAuthSuccess={() => handleSetTicketId(null)} />
-    );
+    return <Suspense fallback={<div className="page-loading-state">กำลังโหลดหน้า...</div>}>
+      {authView === 'login' ? (
+        <Login onToggleView={setAuthView} onAuthSuccess={() => handleSetTicketId(null)} />
+      ) : (
+        <Register onToggleView={setAuthView} onAuthSuccess={() => handleSetTicketId(null)} />
+      )}
+    </Suspense>;
   }
 
   // 3. Authenticated State (Show Header + Dashboard/Detail)
   return (
+    <Suspense fallback={<div className="page-loading-state">กำลังโหลดหน้า...</div>}>
     <div className="app-container">
       {/* Profile Settings Modal */}
       <ProfileModal 
@@ -754,7 +739,15 @@ function MainAppContent() {
                          <div 
                            key={notif.id} 
                            className={`notification-item ${!notif.is_read ? 'unread' : ''}`}
+                           role="button"
+                           tabIndex={0}
                            onClick={() => handleNotificationClick(notif)}
+                           onKeyDown={(event) => {
+                             if (event.key === 'Enter' || event.key === ' ') {
+                               event.preventDefault();
+                               handleNotificationClick(notif);
+                             }
+                           }}
                          >
                            <div className="noti-item-title">{notif.title}</div>
                            <div className="noti-item-msg">{notif.message}</div>
@@ -771,7 +764,15 @@ function MainAppContent() {
 
             <div 
               className="user-badge"
+              role="button"
+              tabIndex={0}
               onClick={() => setIsProfileOpen(true)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                  event.preventDefault();
+                  setIsProfileOpen(true);
+                }
+              }}
               style={{ cursor: 'pointer', transition: 'all 0.2s', padding: '0.35rem 0.85rem', borderRadius: '20px' }}
               title="คลิกเพื่อแก้ไขข้อมูลส่วนตัว"
             >
@@ -832,6 +833,7 @@ function MainAppContent() {
         <span>© 2026 PPCC Care. All rights reserved by PremierProfessional Consulting Co., Ltd.</span>
       </footer>
     </div>
+    </Suspense>
   );
 }
 
@@ -900,7 +902,6 @@ function CookieConsent() {
           </p>
         </div>
       </div>
-
       {/* Buttons Area */}
       <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'nowrap', alignItems: 'center' }}>
         <button 

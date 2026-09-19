@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import EditTicketModal from '../components/EditTicketModal';
 
@@ -32,7 +32,7 @@ export default function TicketDetail({ ticketId, onBack }) {
     }
   }, [ticket]);
 
-  const fetchTicketDetails = async () => {
+  const fetchTicketDetails = useCallback(async () => {
     try {
       // Fetch ticket info
       const ticketRes = await fetch(`${API_URL}/tickets/${ticketId}`, {
@@ -62,9 +62,9 @@ export default function TicketDetail({ ticketId, onBack }) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [API_URL, ticketId, token]);
 
-  const fetchSupportStats = async () => {
+  const fetchSupportStats = useCallback(async () => {
     try {
       const res = await fetch(`${API_URL}/tickets/config/support-stats`, {
         headers: { 'Authorization': `Bearer ${token}` }
@@ -76,19 +76,41 @@ export default function TicketDetail({ ticketId, onBack }) {
     } catch (err) {
       console.error('Error fetching support stats:', err);
     }
-  };
+  }, [API_URL, token]);
+
+  const fetchMessagesOnly = useCallback(async (signal) => {
+    try {
+      const msgsRes = await fetch(`${API_URL}/tickets/${ticketId}/messages`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        signal
+      });
+      if (msgsRes.ok) {
+        const msgsData = await msgsRes.json();
+        setMessages(msgsData);
+      }
+    } catch (err) {
+      if (err.name === 'AbortError') return;
+      console.error('Quiet polling error:', err);
+    }
+  }, [API_URL, ticketId, token]);
 
   useEffect(() => {
     fetchTicketDetails();
     fetchSupportStats();
 
     // Auto polling every 4 seconds to fetch new chat messages (free real-time feeling!)
+    const controller = new AbortController();
     const interval = setInterval(() => {
-      fetchMessagesOnly();
+      fetchMessagesOnly(controller.signal);
     }, 4000);
 
-    return () => clearInterval(interval);
-  }, [ticketId, token]);
+    return () => {
+      clearInterval(interval);
+      controller.abort();
+    };
+  }, [fetchMessagesOnly, fetchSupportStats, fetchTicketDetails]);
 
   // Handle Escape key to close image preview modal
   useEffect(() => {
@@ -106,22 +128,6 @@ export default function TicketDetail({ ticketId, onBack }) {
       window.removeEventListener('keydown', handleKeyDown);
     };
   }, [previewImage]);
-
-  const fetchMessagesOnly = async () => {
-    try {
-      const msgsRes = await fetch(`${API_URL}/tickets/${ticketId}/messages`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      if (msgsRes.ok) {
-        const msgsData = await msgsRes.json();
-        setMessages(msgsData);
-      }
-    } catch (err) {
-      console.error('Quiet polling error:', err);
-    }
-  };
 
   const handleSendMessage = async (e) => {
     e.preventDefault();
@@ -439,13 +445,13 @@ export default function TicketDetail({ ticketId, onBack }) {
                             setPreviewImage(att.file_url);
                             setPreviewIndex(imgIndex);
                           } else {
-                            window.open(`${API_URL.replace('/api', '')}${att.file_url}`, '_blank');
+                            window.open(`${API_URL.replace('/api', '')}${att.file_url}${token ? `?token=${token}` : ''}`, '_blank', 'noopener,noreferrer');
                           }
                         }}
                       >
                         {isImage ? (
                           <img 
-                            src={`${API_URL.replace('/api', '')}${att.file_url}`} 
+                            src={`${API_URL.replace('/api', '')}${att.file_url}${token ? `?token=${token}` : ''}`} 
                             alt={att.file_name} 
                             className="file-preview-thumbnail"
                             style={{ width: '36px', height: '36px', fontSize: '1rem' }}
@@ -835,14 +841,14 @@ export default function TicketDetail({ ticketId, onBack }) {
         <div className="modal-preview-overlay" onClick={() => setPreviewImage(null)}>
           <div className="modal-preview-wrapper" onClick={(e) => e.stopPropagation()}>
             <img 
-              src={`${API_URL.replace('/api', '')}${previewImage}`} 
+              src={`${API_URL.replace('/api', '')}${previewImage}${token ? `?token=${token}` : ''}`} 
               alt="Preview" 
               className="modal-preview-img" 
             />
             <div className="modal-preview-controls-bar">
               <button 
                 className="modal-ctrl-btn" 
-                onClick={() => window.open(`${API_URL.replace('/api', '')}${previewImage}`, '_blank')}
+                onClick={() => window.open(`${API_URL.replace('/api', '')}${previewImage}${token ? `?token=${token}` : ''}`, '_blank', 'noopener,noreferrer')}
                 title="เปิดรูปภาพในแท็บใหม่"
               >
                 🔗 เปิดรูปขนาดเต็ม

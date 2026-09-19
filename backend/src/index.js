@@ -18,6 +18,9 @@ dotenv.config(); // Reload env changes
 const app = express();
 const PORT = process.env.PORT || 5001;
 
+// Trust reverse proxy (Nginx / Docker) for accurate rate limiting and IP logging
+app.set('trust proxy', 1);
+
 // Middlewares
 app.use(helmet()); // Set security HTTP headers
 app.use(helmet.crossOriginResourcePolicy({ policy: "cross-origin" })); // Allow images to load cross-origin
@@ -54,12 +57,13 @@ app.get('/api/health', (req, res) => {
   res.status(200).json({ status: 'OK', message: 'PPCC Care API is healthy and running.' });
 });
 
-// Serve static uploaded files
+// Serve static uploaded files (Protected by fileAuthMiddleware)
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { fileAuthMiddleware } from './middleware/fileAuthMiddleware.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use('/uploads', fileAuthMiddleware, express.static(path.join(__dirname, 'uploads')));
 
 // API Routes
 app.use('/api/auth', authRoutes);

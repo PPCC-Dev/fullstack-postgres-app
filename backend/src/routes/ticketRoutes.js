@@ -42,7 +42,7 @@ import {
   updateSupportStat,
   deleteSupportStat
 } from '../controllers/ticketController.js';
-import { authenticateToken, requireAgent } from '../middleware/authMiddleware.js';
+import { authenticateToken, requireAgent, requireAdmin } from '../middleware/authMiddleware.js';
 import { upload } from '../middleware/uploadMiddleware.js';
 
 const router = express.Router();
@@ -81,9 +81,9 @@ router.put('/config/module-program-groups/:id', requireAgent, updateModuleProgra
 router.delete('/config/module-program-groups/:id', requireAgent, deleteModuleProgramGroup);
 
 router.get('/config/roles', getRoles);
-router.post('/config/roles', requireAgent, createRole);
-router.put('/config/roles/:id', requireAgent, updateRole);
-router.delete('/config/roles/:id', requireAgent, deleteRole);
+router.post('/config/roles', requireAdmin, createRole);
+router.put('/config/roles/:id', requireAdmin, updateRole);
+router.delete('/config/roles/:id', requireAdmin, deleteRole);
 
 // Ticket CRUD & Queries
 router.post('/', upload.array('attachments', 10), createTicket);

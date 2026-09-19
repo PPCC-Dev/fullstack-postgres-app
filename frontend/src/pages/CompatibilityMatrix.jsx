@@ -1,12 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 
 export default function CompatibilityMatrix() {
-  const { user, API_URL } = useAuth();
+  const { user, token, API_URL } = useAuth();
+
+  const authHeaders = { 'Authorization': `Bearer ${token}` };
 
   // Data states
   const [matrixData, setMatrixData] = useState([]);
-  const [stats, setStats] = useState({ total: 0, supported: 0, deprecated: 0, total_csi_versions: 0, total_components: 0, total_categories: 0 });
   const [filterOptions, setFilterOptions] = useState({ csi_versions: [], components: [], categories: [], integrated_apps: [], statuses: [] });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -30,12 +31,22 @@ export default function CompatibilityMatrix() {
 
   // Fetch matrix data whenever filters change
   useEffect(() => {
-    fetchMatrixData();
+    const controller = new AbortController();
+    const timer = setTimeout(() => {
+      fetchMatrixData(controller.signal);
+    }, 300);
+
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
   }, [search, selectedCsiVersion, selectedComponent, selectedCategory, selectedApp, selectedStatus]);
 
-  const fetchFilterOptions = async () => {
+  async function fetchFilterOptions() {
     try {
-      const res = await fetch(`${API_URL}/compatibility/filters`);
+      const res = await fetch(`${API_URL}/compatibility/filters`, {
+        headers: authHeaders
+      });
       if (res.ok) {
         const data = await res.json();
         setFilterOptions(data);
@@ -43,9 +54,9 @@ export default function CompatibilityMatrix() {
     } catch (err) {
       console.error('Failed to fetch filter options:', err);
     }
-  };
+  }
 
-  const fetchMatrixData = async () => {
+  async function fetchMatrixData(signal) {
     setLoading(true);
     setError(null);
     try {
@@ -57,25 +68,26 @@ export default function CompatibilityMatrix() {
       if (selectedApp !== 'all') params.append('integrated_app', selectedApp);
       if (selectedStatus !== 'all') params.append('status', selectedStatus);
 
-      const res = await fetch(`${API_URL}/compatibility?${params.toString()}`);
+      const res = await fetch(`${API_URL}/compatibility?${params.toString()}`, {
+        headers: authHeaders,
+        signal
+      });
       if (res.ok) {
         const json = await res.json();
         setMatrixData(json.data || []);
-        if (json.stats) {
-          setStats(json.stats);
-        }
       } else {
         setError('ไม่สามารถดึงข้อมูล Compatibility Matrix ได้');
       }
     } catch (err) {
+      if (err.name === 'AbortError') return;
       console.error('Error fetching compatibility matrix:', err);
       setError('เกิดข้อผิดพลาดในการเชื่อมต่อกับเซิร์ฟเวอร์');
     } finally {
-      setLoading(false);
+      if (!signal?.aborted) setLoading(false);
     }
-  };
+  }
 
-  const fileInputRef = React.useRef(null);
+  const fileInputRef = useRef(null);
   const [uploading, setUploading] = useState(false);
 
   const handleFileUploadClick = () => {
@@ -100,6 +112,7 @@ export default function CompatibilityMatrix() {
     try {
       const res = await fetch(`${API_URL}/compatibility/upload`, {
         method: 'POST',
+        headers: authHeaders,
         body: formData
       });
       
@@ -133,7 +146,10 @@ export default function CompatibilityMatrix() {
     if (!window.confirm('คุณต้องการซิงค์ข้อมูลใหม่จากไฟล์ SyteLine_Compatibility_Matrix.xlsm ล่าสุด ใช่หรือไม่?')) return;
     setReimporting(true);
     try {
-      const res = await fetch(`${API_URL}/compatibility/reimport`, { method: 'POST' });
+      const res = await fetch(`${API_URL}/compatibility/reimport`, {
+        method: 'POST',
+        headers: authHeaders
+      });
       const contentType = res.headers.get('content-type');
       let json = {};
       if (contentType && contentType.includes('application/json')) {

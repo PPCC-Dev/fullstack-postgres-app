@@ -81,7 +81,7 @@ export async function getCompatibilityMatrix(req, res) {
     });
   } catch (error) {
     console.error('Error fetching compatibility matrix:', error);
-    res.status(500).json({ error: 'Failed to fetch compatibility matrix', details: error.message });
+    res.status(500).json({ error: 'Failed to fetch compatibility matrix' });
   }
 }
 
@@ -124,7 +124,7 @@ export async function getFilterOptions(req, res) {
     });
   } catch (error) {
     console.error('Error fetching filter options:', error);
-    res.status(500).json({ error: 'Failed to fetch filter options', details: error.message });
+    res.status(500).json({ error: 'Failed to fetch filter options' });
   }
 }
 
@@ -137,7 +137,7 @@ export async function reimportMatrix(req, res) {
     res.json(result);
   } catch (error) {
     console.error('Error re-importing matrix:', error);
-    res.status(500).json({ error: 'Failed to re-import matrix', details: error.message });
+    res.status(500).json({ error: 'Failed to re-import matrix' });
   }
 }
 
@@ -145,29 +145,29 @@ export async function reimportMatrix(req, res) {
  * Upload and import Excel Matrix file (.xlsm / .xlsx)
  */
 export async function uploadMatrixFile(req, res) {
+  let uploadedFilePath;
+
   try {
     if (!req.file) {
       return res.status(400).json({ success: false, error: 'กรุณาเลือกไฟล์ Excel (.xlsm หรือ .xlsx)' });
     }
 
-    const uploadedFilePath = req.file.path;
+    uploadedFilePath = req.file.path;
     console.log(`📤 Admin uploaded matrix file: ${uploadedFilePath}`);
 
     const result = await initAndImportCompatibilityMatrix(true, uploadedFilePath);
 
-    // Clean up temp file
-    const rootMatrixPath = path.resolve(process.cwd(), 'SyteLine_Compatibility_Matrix.xlsm');
-    if (fs.existsSync(uploadedFilePath) && uploadedFilePath !== rootMatrixPath) {
-      try {
-        fs.unlinkSync(uploadedFilePath);
-      } catch (e) {
-        console.warn('Temp upload file cleanup error:', e.message);
-      }
-    }
-
     res.json(result);
   } catch (error) {
     console.error('Error handling upload matrix file:', error);
-    res.status(500).json({ success: false, error: 'เกิดข้อผิดพลาดในการอัปโหลดไฟล์', details: error.message });
+    res.status(500).json({ success: false, error: 'เกิดข้อผิดพลาดในการอัปโหลดไฟล์' });
+  } finally {
+    if (uploadedFilePath && fs.existsSync(uploadedFilePath)) {
+      try {
+        fs.unlinkSync(uploadedFilePath);
+      } catch (cleanupError) {
+        console.warn('Temp upload file cleanup error:', cleanupError.message);
+      }
+    }
   }
 }

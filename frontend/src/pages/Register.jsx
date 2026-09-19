@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { isValidPassword, PASSWORD_POLICY_MESSAGE } from '../utils/passwordPolicy';
 
 export default function Register({ onToggleView, onAuthSuccess }) {
   const { register, API_URL } = useAuth();
@@ -27,9 +28,8 @@ export default function Register({ onToggleView, onAuthSuccess }) {
       return;
     }
 
-    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]).{6,}$/;
-    if (!passwordRegex.test(password)) {
-      setError('รหัสผ่านต้องมีความยาวอย่างน้อย 6 ตัวอักษร และประกอบด้วยตัวอักษรพิมพ์เล็ก (a-z) พิมพ์ใหญ่ (A-Z) ตัวเลข (0-9) และอักขระพิเศษอย่างน้อยอย่างละ 1 ตัว');
+    if (!isValidPassword(password)) {
+      setError(PASSWORD_POLICY_MESSAGE);
       setLoading(false);
       return;
     }

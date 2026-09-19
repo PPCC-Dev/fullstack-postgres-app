@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 
 export default function CreateTicketModal({ onClose, onSuccess }) {
@@ -30,12 +30,7 @@ export default function CreateTicketModal({ onClose, onSuccess }) {
   const [dbCustomers, setDbCustomers] = useState([]);
   const [dbContacts, setDbContacts] = useState([]);
 
-  useEffect(() => {
-    fetchConfig();
-    // eslint-disable-next-line
-  }, [token]);
-
-  const fetchConfig = async () => {
+  async function fetchConfig() {
     try {
       const modRes = await fetch(`${API_URL}/tickets/config/modules`, { headers: { 'Authorization': `Bearer ${token}` } });
       if (modRes.ok) {
@@ -81,7 +76,13 @@ export default function CreateTicketModal({ onClose, onSuccess }) {
     } catch (err) {
       console.error('Error fetching config for modal:', err);
     }
-  };
+  }
+
+  useEffect(() => {
+    // This call starts the external configuration request when the modal opens.
+    // eslint-disable-next-line react-hooks/set-state-in-effect, react-hooks/exhaustive-deps
+    fetchConfig();
+  }, [token]);
 
   const handleCreateTicket = async (e) => {
     e.preventDefault();
@@ -139,9 +140,9 @@ export default function CreateTicketModal({ onClose, onSuccess }) {
 
   return (
     <div className="modal-overlay" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(15, 23, 42, 0.45)', backdropFilter: 'blur(8px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 10000 }}>
-      <div className="glass-card modal-content glow-purple" style={{ width: '100%', maxWidth: '800px', padding: '2rem', background: '#ffffff', borderRadius: '16px', border: '1px solid var(--glass-border)', textAlign: 'left', maxHeight: '90vh', overflowY: 'auto', position: 'relative' }}>
-        <button className="modal-close" onClick={onClose} style={{ position: 'absolute', top: '1.5rem', right: '1.5rem', background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#64748b' }}>×</button>
-        <h2 style={{ marginBottom: '1.5rem', background: 'linear-gradient(135deg, #004bb5, #6366f1)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', fontWeight: 'bold', fontSize: '1.5rem', marginTop: 0 }}>
+      <div className="glass-card modal-content glow-purple" role="dialog" aria-modal="true" aria-labelledby="create-ticket-title" style={{ width: '100%', maxWidth: '800px', padding: '2rem', background: '#ffffff', borderRadius: '16px', border: '1px solid var(--glass-border)', textAlign: 'left', maxHeight: '90vh', overflowY: 'auto', position: 'relative' }}>
+        <button className="modal-close" onClick={onClose} aria-label="ปิดหน้าต่างสร้าง ticket" style={{ position: 'absolute', top: '1.5rem', right: '1.5rem', background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#64748b' }}>×</button>
+        <h2 id="create-ticket-title" style={{ marginBottom: '1.5rem', background: 'linear-gradient(135deg, #004bb5, #6366f1)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', fontWeight: 'bold', fontSize: '1.5rem', marginTop: 0 }}>
           สร้างคำขอความช่วยเหลือใหม่
         </h2>
 
@@ -167,7 +168,7 @@ export default function CreateTicketModal({ onClose, onSuccess }) {
             />
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+          <div className="ticket-form-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
             <div className="form-group">
               <label htmlFor="ticket-additional-email" style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: '#475569', marginBottom: '0.4rem' }}>อีเมลเพิ่มเติม (CC)</label>
               <input

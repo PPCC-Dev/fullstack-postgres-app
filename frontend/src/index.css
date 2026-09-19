@@ -128,6 +128,210 @@ body {
   gap: 1.5rem;
 }
 
+.user-badge:focus-visible,
+.notification-item:focus-visible,
+.bell-icon-btn:focus-visible,
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 3px solid rgba(0, 75, 181, 0.45);
+  outline-offset: 2px;
+}
+
+.customer-toolbar {
+  display: grid;
+  grid-template-columns: minmax(240px, 1.5fr) repeat(3, minmax(150px, 0.7fr));
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.customer-toolbar .glass-input,
+.customer-table-meta .glass-input {
+  margin: 0;
+  min-width: 0;
+}
+
+.customer-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.customer-summary-grid > div {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.8rem 1rem;
+  background: rgba(248, 250, 252, 0.8);
+  border: 1px solid var(--glass-border);
+  border-radius: 10px;
+}
+
+.customer-summary-grid strong {
+  color: #0f172a;
+  font-size: 1.35rem;
+}
+
+.customer-summary-grid span,
+.customer-table-meta,
+.customer-table-meta label {
+  color: #64748b;
+  font-size: 0.82rem;
+}
+
+.customer-table-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.65rem;
+}
+
+.customer-table-meta label {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.customer-table-meta .glass-input {
+  width: auto;
+  padding: 0.3rem 0.5rem;
+}
+
+.customer-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+}
+
+.customer-compact-table {
+  width: 100%;
+  border-collapse: collapse;
+  color: #0f172a;
+  font-size: 0.88rem;
+}
+
+.customer-compact-table th {
+  padding: 0.8rem 0.85rem;
+  color: #64748b;
+  background: rgba(248, 250, 252, 0.9);
+  font-size: 0.72rem;
+  text-align: left;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.customer-compact-table td {
+  padding: 0.85rem;
+  border-top: 1px solid var(--glass-border);
+  white-space: nowrap;
+}
+
+.customer-compact-table tbody tr {
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.customer-compact-table tbody tr:hover {
+  background: rgba(0, 75, 181, 0.035);
+}
+
+.customer-compact-table td:first-child {
+  min-width: 220px;
+  white-space: normal;
+}
+
+.customer-compact-table td:first-child small {
+  display: block;
+  margin-top: 0.2rem;
+  color: #94a3b8;
+  font-size: 0.75rem;
+}
+
+.customer-code {
+  display: inline-flex;
+  padding: 0.2rem 0.5rem;
+  border-radius: 6px;
+  background: #eef2ff;
+  color: #4338ca;
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.ma-status {
+  display: inline-flex;
+  padding: 0.25rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.74rem;
+  font-weight: 700;
+}
+
+.ma-status.complete { background: #dcfce7; color: #15803d; }
+.ma-status.attention { background: #fef3c7; color: #b45309; }
+
+.customer-action-button,
+.customer-delete-button {
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.customer-action-button { color: #2563eb; }
+.customer-delete-button { margin-left: 0.7rem; color: #dc2626; }
+.customer-empty { padding: 2.5rem !important; color: #64748b; text-align: center; }
+
+.customer-drawer-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1100;
+  display: flex;
+  justify-content: flex-end;
+  background: rgba(15, 23, 42, 0.3);
+  backdrop-filter: blur(3px);
+}
+
+.customer-drawer {
+  width: min(440px, 100%);
+  height: 100%;
+  overflow-y: auto;
+  padding: 1.5rem;
+  background: #ffffff;
+  box-shadow: -12px 0 35px rgba(15, 23, 42, 0.12);
+  animation: slideInRight 0.22s ease-out;
+}
+
+.customer-drawer-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-bottom: 1.25rem;
+  border-bottom: 1px solid var(--glass-border);
+}
+
+.customer-drawer h4 { margin: 0.25rem 0 0.5rem; font-size: 1.25rem; }
+.customer-drawer h5 { margin: 1.5rem 0 0.75rem; color: #475569; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; }
+.eyebrow { color: #6366f1; font-size: 0.68rem; font-weight: 800; letter-spacing: 0.08em; }
+.customer-detail-list { display: grid; grid-template-columns: 1fr 1.5fr; gap: 0.65rem; margin: 0; font-size: 0.88rem; }
+.customer-detail-list dt { color: #94a3b8; }
+.customer-detail-list dd { margin: 0; color: #1e293b; font-weight: 600; overflow-wrap: anywhere; }
+.ma-detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.65rem; }
+.ma-detail-grid > div { display: flex; justify-content: space-between; padding: 0.7rem; background: #f8fafc; border-radius: 8px; font-size: 0.78rem; }
+.ma-detail-grid strong.yes { color: #15803d; }
+.ma-detail-grid strong.no { color: #b45309; }
+.customer-drawer-actions { display: flex; justify-content: flex-end; gap: 0.65rem; margin-top: 2rem; }
+.customer-edit-form { margin-top: 1rem; }
+.customer-edit-form > .glass-input { margin: 0 0 0.65rem; }
+.customer-edit-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.65rem; margin-top: 0.65rem; }
+.customer-edit-grid .glass-input { margin: 0; }
+
+@keyframes slideInRight { from { transform: translateX(100%); } to { transform: translateX(0); } }
+
 .user-badge {
   display: flex;
   align-items: center;
@@ -906,6 +1110,42 @@ h1, h2, h3, h4 {
 }
 
 @media (max-width: 767px) {
+  .header-glass {
+    padding: 0.75rem 1rem;
+  }
+
+  .nav-content,
+  .nav-actions {
+    gap: 0.65rem;
+  }
+
+  .logo-container {
+    font-size: 1.15rem;
+  }
+
+  .user-badge {
+    max-width: 150px;
+    padding: 0.35rem 0.55rem;
+  }
+
+  .user-badge > span:first-child {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .modal-content {
+    max-height: calc(100vh - 2rem);
+    padding: 1.25rem !important;
+    border-radius: 16px;
+  }
+
+  .profile-settings-grid,
+  .ticket-form-grid {
+    grid-template-columns: 1fr !important;
+    gap: 1rem !important;
+  }
+
   .profile-modal-divider {
     border-left: none !important;
     padding-left: 0 !important;

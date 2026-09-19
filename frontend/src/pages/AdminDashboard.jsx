@@ -196,6 +196,7 @@ export default function AdminDashboard({ onNavigateToTickets, onViewTicket, refr
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   const renderTicketTable = (title, tickets, emptyMessage, colorClass, colorHex) => {
@@ -245,7 +246,7 @@ export default function AdminDashboard({ onNavigateToTickets, onViewTicket, refr
                     <td style={{ padding: '0.75rem' }}>
                       <div 
                         style={{ color: '#3b82f6', fontWeight: '600', cursor: 'pointer', textDecoration: 'underline', textDecorationColor: 'rgba(59, 130, 246, 0.4)', marginBottom: '0.25rem' }}
-                        onClick={() => window.open(`/?ticketId=${ticket.id}`, '_blank')}
+                        onClick={() => window.open(`/?ticketId=${ticket.id}`, '_blank', 'noopener,noreferrer')}
                         title="คลิกเพื่อดูรายละเอียด (เปิดในแท็บใหม่)"
                       >
                         {ticket.ticket_number || '#' + ticket.id}
@@ -439,6 +440,7 @@ export default function AdminDashboard({ onNavigateToTickets, onViewTicket, refr
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   const filteredTicketsToExport = report ? (() => {

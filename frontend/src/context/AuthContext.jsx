@@ -1,4 +1,4 @@
-import React, { createContext, useState, useEffect, useContext } from 'react';
+import { createContext, useState, useEffect, useContext } from 'react';
 
 const AuthContext = createContext(null);
 
@@ -32,13 +32,8 @@ export const AuthProvider = ({ children }) => {
           }
         } catch (error) {
           console.error('Error validating token:', error);
-          // Network error: fallback to stored user info if available to avoid kicking user offline instantly
-          const storedUser = localStorage.getItem('apex_user');
-          if (storedUser) {
-            setUser(JSON.parse(storedUser));
-          } else {
-            logout();
-          }
+          // Do not trust cached identity or role data when the token cannot be verified.
+          logout();
         }
       } else {
         setUser(null);
@@ -47,7 +42,7 @@ export const AuthProvider = ({ children }) => {
     };
 
     initializeAuth();
-  }, [token]);
+  }, [token, API_URL]);
 
   // Login handler
   const login = async (email, password) => {
@@ -110,12 +105,12 @@ export const AuthProvider = ({ children }) => {
   };
 
   // Logout handler
-  const logout = () => {
+  function logout() {
     localStorage.removeItem('apex_token');
     localStorage.removeItem('apex_user');
     setToken(null);
     setUser(null);
-  };
+  }
 
   // Idle Timeout (1 hour)
   useEffect(() => {

@@ -38,6 +38,7 @@ export const createTicket = async (req, res) => {
   const attachmentUrl = req.files && req.files.length > 0 ? `/uploads/${req.files[0].filename}` : null;
   const attachmentName = req.files && req.files.length > 0 ? req.files[0].originalname : null;
 
+  const client = await pool.connect();
   try {
     const modulesResult = await pool.query('SELECT name FROM modules');
     const validModules = modulesResult.rows.map(r => r.name);
@@ -66,10 +67,14 @@ export const createTicket = async (req, res) => {
     
     const targetTotalLength = 10;
     const runningNumLength = Math.max(1, targetTotalLength - prefix.length);
+
+    // Begin atomic transaction with lock to prevent race condition
+    await client.query('BEGIN');
+    await client.query('SELECT pg_advisory_xact_lock(hashtext($1))', [prefix]);
     
     // Get latest ticket with this prefix to calculate next running number
-    const latestRes = await pool.query(
-      `SELECT ticket_number FROM tickets WHERE ticket_number LIKE $1 ORDER BY id DESC LIMIT 1`,
+    const latestRes = await client.query(
+      `SELECT ticket_number FROM tickets WHERE ticket_number LIKE $1 ORDER BY id DESC LIMIT 1 FOR UPDATE`,
       [`${prefix}%`]
     );
     
@@ -83,7 +88,7 @@ export const createTicket = async (req, res) => {
     }
     const ticketNumber = `${prefix}${runningNumber.toString().padStart(runningNumLength, '0')}`;
 
-    const newTicketResult = await pool.query(
+    const newTicketResult = await client.query(
       `INSERT INTO tickets (ticket_number, title, description, module, program_type, issue_type, form_name, additional_email, priority, status, customer_id, cust_num, attachment_url, attachment_name, contact_name, request_date, request_time) 
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NULL, $10, $11, $12, $13, $14, COALESCE($15, CURRENT_DATE), COALESCE($16, CURRENT_TIME)) 
        RETURNING *`,
@@ -97,12 +102,15 @@ export const createTicket = async (req, res) => {
       for (const file of req.files) {
         const fileUrl = `/uploads/${file.filename}`;
         const fileName = file.originalname;
-        await pool.query(
+        await client.query(
           `INSERT INTO ticket_attachments (ticket_id, file_url, file_name) VALUES ($1, $2, $3)`,
           [newTicket.id, fileUrl, fileName]
         );
       }
     }
+
+    await client.query('COMMIT');
+    client.release();
 
     // Fetch multiple attachments
     const attachmentsRes = await pool.query(
@@ -122,7 +130,6 @@ export const createTicket = async (req, res) => {
       `);
       
       const customerEmail = customerRes.rows[0]?.email;
-      const adminEmails = adminsRes.rows.map(r => r.email);
       
       // Send email ONLY to customer (no admin/agent emails)
       await sendTicketCreatedEmail(newTicket, customerEmail, [], additional_email);
@@ -143,6 +150,8 @@ export const createTicket = async (req, res) => {
 
     return res.status(201).json(newTicket);
   } catch (error) {
+    await client.query('ROLLBACK').catch(() => {});
+    client.release();
     console.error('Error creating ticket:', error);
     return res.status(500).json({ error: 'Server error while creating ticket.' });
   }
@@ -151,48 +160,58 @@ export const createTicket = async (req, res) => {
 // 2. Get All Tickets (Customer gets their own, Agent gets all)
 export const getTickets = async (req, res) => {
   const { id, role } = req.user;
+  const page = parseInt(req.query.page, 10) || 1;
+  const limit = parseInt(req.query.limit, 10) || 0; // 0 means unpaginated by default
+  const isPaginated = req.query.paginate === 'true' || limit > 0;
+  const offset = (page - 1) * (limit > 0 ? limit : 20);
 
   try {
-    let ticketsResult;
+    let baseWhere = '';
+    let whereParams = [];
 
-    if (role === 'agent' || role === 'admin') {
-      // Agents see all tickets with customer and agent names
-      ticketsResult = await pool.query(
-        `SELECT t.*, 
-                COALESCE(pt.name, t.program_type) as program_type,
-                m.description as module_desc,
-                c.name as user_name, c.email as customer_email, c.cust_num as user_cust_num,
-                
-                a.name as agent_name,
-                cust.cust_name as actual_customer_name
-         FROM tickets t
-         LEFT JOIN users c ON t.customer_id = c.id
-         LEFT JOIN users a ON t.agent_id = a.id
-         LEFT JOIN customers cust ON t.cust_num = cust.cust_num
-         LEFT JOIN program_types pt ON t.program_type = pt.value
-         LEFT JOIN modules m ON t.module = m.name
-         ORDER BY t.updated_at DESC`
-      );
-    } else {
-      // Customers see only their own tickets
-      ticketsResult = await pool.query(
-        `SELECT t.*, 
-                COALESCE(pt.name, t.program_type) as program_type,
-                m.description as module_desc,
-                c.name as user_name, c.cust_num as user_cust_num,
-                
-                a.name as agent_name,
-                cust.cust_name as actual_customer_name
-         FROM tickets t
-         LEFT JOIN users c ON t.customer_id = c.id
-         LEFT JOIN users a ON t.agent_id = a.id
-         LEFT JOIN customers cust ON t.cust_num = cust.cust_num
-         LEFT JOIN program_types pt ON t.program_type = pt.value
-         LEFT JOIN modules m ON t.module = m.name
-         WHERE t.customer_id = $1 OR (t.cust_num IS NOT NULL AND t.cust_num = $2)
-         ORDER BY t.updated_at DESC`,
-        [id, req.user.cust_num]
-      );
+    if (role !== 'agent' && role !== 'admin') {
+      baseWhere = 'WHERE t.customer_id = $1 OR (t.cust_num IS NOT NULL AND t.cust_num = $2)';
+      whereParams = [id, req.user.cust_num];
+    }
+
+    let countQuery = `SELECT COUNT(*)::int as total FROM tickets t ${baseWhere}`;
+    let countRes = await pool.query(countQuery, whereParams);
+    const total = countRes.rows[0]?.total || 0;
+
+    let query = `
+      SELECT t.*, 
+             COALESCE(pt.name, t.program_type) as program_type,
+             m.description as module_desc,
+             c.name as user_name, c.email as customer_email, c.cust_num as user_cust_num,
+             a.name as agent_name,
+             cust.cust_name as actual_customer_name
+      FROM tickets t
+      LEFT JOIN users c ON t.customer_id = c.id
+      LEFT JOIN users a ON t.agent_id = a.id
+      LEFT JOIN customers cust ON t.cust_num = cust.cust_num
+      LEFT JOIN program_types pt ON t.program_type = pt.value
+      LEFT JOIN modules m ON t.module = m.name
+      ${baseWhere}
+      ORDER BY t.updated_at DESC
+    `;
+
+    let queryParams = [...whereParams];
+
+    if (isPaginated && limit > 0) {
+      queryParams.push(limit, offset);
+      query += ` LIMIT $${queryParams.length - 1} OFFSET $${queryParams.length}`;
+    }
+
+    const ticketsResult = await pool.query(query, queryParams);
+
+    if (req.query.paginate === 'true') {
+      return res.status(200).json({
+        tickets: ticketsResult.rows,
+        total,
+        page,
+        limit: limit > 0 ? limit : total,
+        totalPages: limit > 0 ? Math.ceil(total / limit) : 1
+      });
     }
 
     return res.status(200).json(ticketsResult.rows);
@@ -317,12 +336,11 @@ export const claimTicket = async (req, res) => {
 export const updateTicketStatus = async (req, res) => {
   const { id: userId, role } = req.user;
   const ticketId = req.params.id;
-  const { status } = req.body;
+  let { status } = req.body;
 
-  const validStatuses = [null, '', 'O', 'C'];
-  if (status !== null && status !== '' && !validStatuses.includes(status)) {
-    return res.status(400).json({ error: 'Invalid status value.' });
-  }
+  // Normalize client aliases ('resolved' -> 'C', 'open' -> 'O')
+  if (status === 'resolved') status = 'C';
+  if (status === 'open') status = 'O';
 
   try {
     const checkTicket = await pool.query('SELECT * FROM tickets WHERE id = $1', [ticketId]);
@@ -332,10 +350,17 @@ export const updateTicketStatus = async (req, res) => {
 
     const ticket = checkTicket.rows[0];
 
-    // Authorization
+    // Authorization & Status validation
     if (role === 'agent' || role === 'admin') {
+      // Validate status against support_stats or null/empty
+      if (status !== null && status !== '') {
+        const statCheck = await pool.query('SELECT stat FROM support_stats WHERE stat = $1', [status]);
+        if (statCheck.rows.length === 0 && !['O', 'C'].includes(status)) {
+          return res.status(400).json({ error: 'Invalid status value.' });
+        }
+      }
+
       // Agents and admins can change status
-      // If setting back to NULL, clear agent_id
       let query;
       let params;
 
@@ -343,7 +368,6 @@ export const updateTicketStatus = async (req, res) => {
         query = `UPDATE tickets SET status = NULL, agent_id = NULL, assigned_at = NULL, updated_at = CURRENT_TIMESTAMP, resolved_by = NULL WHERE id = $1 RETURNING *`;
         params = [ticketId];
       } else {
-        // If assigned but no agent, set to current agent
         const newAgentId = ticket.agent_id || userId;
         const resolvedClause = status === 'C' ? `, resolved_at = CURRENT_TIMESTAMP, resolved_by = $4` : '';
         const assignedClause = (!ticket.agent_id && newAgentId) ? `, assigned_at = CURRENT_TIMESTAMP` : '';
@@ -371,11 +395,10 @@ export const updateTicketStatus = async (req, res) => {
           console.error('Failed to send closing email/notification:', emailErr);
         }
       } else {
-        // Status changed to something other than resolved (e.g. open, assigned)
         try {
           const customerRes = await pool.query('SELECT email FROM users WHERE id = $1', [ticket.customer_id]);
           const customerEmail = customerRes.rows[0]?.email;
-          const statusMap = { 'open': 'เปิดรับเรื่อง', 'assigned': 'กำลังดำเนินการ' };
+          const statusMap = { 'O': 'เปิดรับเรื่อง', 'open': 'เปิดรับเรื่อง', 'I': 'กำลังดำเนินการ', 'assigned': 'กำลังดำเนินการ' };
           const thStatus = statusMap[status] || status.toUpperCase();
           
           await sendTicketChangedEmail(
@@ -390,19 +413,19 @@ export const updateTicketStatus = async (req, res) => {
       }
       return res.status(200).json(updatedTicket);
     } else {
-      // Customers can only mark their own tickets as resolved
+      // Customers can only mark their own tickets as resolved ('C') or reopen ('O')
       if (ticket.customer_id !== userId && !(req.user.cust_num && ticket.cust_num === req.user.cust_num)) {
         return res.status(403).json({ error: 'Access denied. You do not own this ticket.' });
       }
 
-      if (status !== 'resolved' && status !== 'open') {
+      if (status !== 'C' && status !== 'O') {
         return res.status(400).json({ error: 'Customers can only reopen or close (resolve) their own tickets.' });
       }
 
-      if (status === 'open') {
+      if (status === 'O') {
         const updated = await pool.query(
-          `UPDATE tickets SET status = $1, updated_at = CURRENT_TIMESTAMP, resolved_by = NULL WHERE id = $2 RETURNING *`,
-          [status, ticketId]
+          `UPDATE tickets SET status = 'O', updated_at = CURRENT_TIMESTAMP, resolved_by = NULL WHERE id = $1 RETURNING *`,
+          [ticketId]
         );
         const reopenedTicket = updated.rows[0];
         if (ticket.agent_id) {
@@ -416,32 +439,28 @@ export const updateTicketStatus = async (req, res) => {
         }
         return res.status(200).json(reopenedTicket);
       } else {
-        const resolvedClause = status === 'resolved' ? `, resolved_at = CURRENT_TIMESTAMP, resolved_by = $3` : '';
-        const params = status === 'resolved' ? [status, ticketId, userId] : [status, ticketId];
         const updated = await pool.query(
-          `UPDATE tickets SET status = $1, updated_at = CURRENT_TIMESTAMP${resolvedClause} WHERE id = $2 RETURNING *`,
-          params
+          `UPDATE tickets SET status = 'C', updated_at = CURRENT_TIMESTAMP, resolved_at = CURRENT_TIMESTAMP, resolved_by = $1 WHERE id = $2 RETURNING *`,
+          [userId, ticketId]
         );
         const updatedTicket = updated.rows[0];
-        if (status === 'resolved') {
-          try {
-            const customerRes = await pool.query('SELECT email FROM users WHERE id = $1', [ticket.customer_id]);
-            const customerEmail = customerRes.rows[0]?.email;
-            await sendTicketClosedEmail(updatedTicket, customerEmail, ticket.additional_email);
+        try {
+          const customerRes = await pool.query('SELECT email FROM users WHERE id = $1', [ticket.customer_id]);
+          const customerEmail = customerRes.rows[0]?.email;
+          await sendTicketClosedEmail(updatedTicket, customerEmail, ticket.additional_email);
 
-            // Notify assigned agent
-            if (ticket.agent_id) {
-              await createNotification(
-                ticket.agent_id,
-                '✅ ลูกค้าได้ทำการปิดเคสช่วยเหลือเรียบร้อยแล้ว',
-                `ลูกค้าได้ทำการยืนยันแก้ไขเสร็จสิ้นและปิดเคส #${updatedTicket.ticket_number}: "${updatedTicket.title}"`,
-                'ticket_closed',
-                updatedTicket.id
-              );
-            }
-          } catch (emailErr) {
-            console.error('Failed to send closing email/notification:', emailErr);
+          // Notify assigned agent
+          if (ticket.agent_id) {
+            await createNotification(
+              ticket.agent_id,
+              '✅ ลูกค้าได้ทำการปิดเคสช่วยเหลือเรียบร้อยแล้ว',
+              `ลูกค้าได้ทำการยืนยันแก้ไขเสร็จสิ้นและปิดเคส #${updatedTicket.ticket_number}: "${updatedTicket.title}"`,
+              'ticket_closed',
+              updatedTicket.id
+            );
           }
+        } catch (emailErr) {
+          console.error('Failed to send closing email/notification:', emailErr);
         }
         return res.status(200).json(updatedTicket);
       }

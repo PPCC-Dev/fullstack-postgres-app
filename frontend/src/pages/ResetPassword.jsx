@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { isValidPassword, PASSWORD_POLICY_MESSAGE } from '../utils/passwordPolicy';
 
 export default function ResetPassword({ onToggleView, token }) {
   const { resetPassword } = useAuth();
@@ -21,6 +22,11 @@ export default function ResetPassword({ onToggleView, token }) {
     
     if (newPassword !== confirmPassword) {
       setError('รหัสผ่านและการยืนยันรหัสผ่านไม่ตรงกัน');
+      return;
+    }
+
+    if (!isValidPassword(newPassword)) {
+      setError(PASSWORD_POLICY_MESSAGE);
       return;
     }
 
