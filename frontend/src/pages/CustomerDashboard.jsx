@@ -9,6 +9,7 @@ export default function CustomerDashboard({ onViewTicket, refreshKey, onCreateTi
   const [statusFilter, setStatusFilter] = useState('active'); // Add status filter
   const [sortOption, setSortOption] = useState('date_desc'); // Add sort option
   const [ownerFilter, setOwnerFilter] = useState('all'); // 'all' or 'me'
+  const [searchQuery, setSearchQuery] = useState(''); // Search query
   
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -16,7 +17,7 @@ export default function CustomerDashboard({ onViewTicket, refreshKey, onCreateTi
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [statusFilter, sortOption, ownerFilter]);
+  }, [statusFilter, sortOption, ownerFilter, searchQuery]);
   // Dynamic configuration lists
 
   const [dbModules, setDbModules] = useState([]);
@@ -122,6 +123,15 @@ export default function CustomerDashboard({ onViewTicket, refreshKey, onCreateTi
       if (statusFilter === 'resolved') return ['C', 'resolved'].includes(t.status);
       return true;
     })
+    .filter(t => {
+      if (!searchQuery.trim()) return true;
+      const q = searchQuery.toLowerCase().trim();
+      const idMatch = String(t.id).includes(q) || (t.ticket_number && String(t.ticket_number).toLowerCase().includes(q));
+      const titleMatch = (t.title || '').toLowerCase().includes(q);
+      const descMatch = (t.description || '').toLowerCase().includes(q);
+      const moduleMatch = (t.module || '').toLowerCase().includes(q);
+      return idMatch || titleMatch || descMatch || moduleMatch;
+    })
     .sort((a, b) => {
       if (sortOption === 'date_desc') return new Date(b.created_at) - new Date(a.created_at);
       if (sortOption === 'date_asc') return new Date(a.created_at) - new Date(b.created_at);
@@ -219,6 +229,45 @@ export default function CustomerDashboard({ onViewTicket, refreshKey, onCreateTi
               <span style={{ fontSize: '0.85rem', color: '#64748b' }}>อัปเดตแบบเรียลไทม์</span>
             </div>
             <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+              <div style={{ position: 'relative', minWidth: '220px', flex: '1 1 220px' }}>
+                <input 
+                  type="text"
+                  className="glass-input"
+                  placeholder="🔍 ค้นหา (ID, หัวข้อ, โมดูล)..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  style={{ 
+                    margin: 0, 
+                    padding: '0.35rem 1.8rem 0.35rem 0.85rem', 
+                    fontSize: '0.85rem', 
+                    width: '100%', 
+                    borderRadius: '8px',
+                    borderColor: searchQuery ? 'var(--accent-cyan)' : undefined,
+                    boxShadow: searchQuery ? '0 0 0 2px rgba(0, 229, 255, 0.15)' : undefined
+                  }}
+                />
+                {searchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchQuery('')}
+                    style={{
+                      position: 'absolute',
+                      right: '6px',
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      background: 'none',
+                      border: 'none',
+                      color: '#94a3b8',
+                      cursor: 'pointer',
+                      fontSize: '0.8rem',
+                      padding: '2px 4px'
+                    }}
+                    title="ล้างคำค้นหา"
+                  >
+                    ✖
+                  </button>
+                )}
+              </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <span style={{ fontSize: '0.85rem', color: '#475569' }}>แสดงหน้าละ:</span>
                 <select 
@@ -277,9 +326,18 @@ export default function CustomerDashboard({ onViewTicket, refreshKey, onCreateTi
             </div>
           ) : displayedTickets.length === 0 ? (
             <div className="glass-card empty-state">
-              <span className="empty-icon">📨</span>
-              <h3>ไม่พบเคสที่ตรงตามเงื่อนไข</h3>
-              <p>ไม่มีข้อมูลเคสช่วยเหลือในสถานะที่คุณเลือก</p>
+              <span className="empty-icon">{searchQuery ? '🔍' : '📨'}</span>
+              <h3>{searchQuery ? 'ไม่พบเคสที่ตรงกับคำค้นหา' : 'ไม่พบเคสที่ตรงตามเงื่อนไข'}</h3>
+              <p>{searchQuery ? `ไม่พบผลลัพธ์สำหรับ "${searchQuery}" ลองค้นหาด้วยคำอื่น หรือกดล้างคำค้นหา` : 'ไม่มีข้อมูลเคสช่วยเหลือในสถานะที่คุณเลือก'}</p>
+              {searchQuery && (
+                <button 
+                  className="btn btn-secondary" 
+                  onClick={() => setSearchQuery('')}
+                  style={{ marginTop: '0.75rem', padding: '0.4rem 1.2rem', fontSize: '0.85rem' }}
+                >
+                  ล้างคำค้นหา
+                </button>
+              )}
             </div>
           ) : (
             <>

@@ -737,6 +737,48 @@ h1, h2, h3, h4 {
   color: #a0aec0;
 }
 
+/* Password visibility toggle button in pill inputs */
+.input-eye-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0 14px 0 4px;
+  color: #94a3b8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s ease, transform 0.15s ease;
+  flex-shrink: 0;
+}
+
+.input-eye-btn:hover {
+  color: #004bb5;
+  transform: scale(1.08);
+}
+
+/* Password wrapper in standard glass inputs */
+.glass-password-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+.glass-password-wrapper .input-eye-btn {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  padding: 4px;
+}
+
+.glass-password-wrapper .input-eye-btn:hover {
+  color: var(--accent-purple);
+  transform: translateY(-50%) scale(1.08);
+}
+
+.glass-password-wrapper .glass-input {
+  padding-right: 2.4rem;
+}
+
 /* Centered custom Sign-in pill button */
 .btn-signin-pill {
   background: #004bb5;

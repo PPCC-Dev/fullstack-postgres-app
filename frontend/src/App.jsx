@@ -25,6 +25,9 @@ function ProfileModal({ isOpen, onClose, onOpenMatrix }) {
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showCurrentPw, setShowCurrentPw] = useState(false);
+  const [showNewPw, setShowNewPw] = useState(false);
+  const [showConfirmPw, setShowConfirmPw] = useState(false);
   const [pwError, setPwError] = useState('');
   const [pwSuccess, setPwSuccess] = useState('');
   const [pwSubmitting, setPwSubmitting] = useState(false);
@@ -209,46 +212,109 @@ function ProfileModal({ isOpen, onClose, onOpenMatrix }) {
             <form onSubmit={handlePasswordSubmit}>
               <div className="form-group">
                 <label htmlFor="current-password">รหัสผ่านปัจจุบัน (Current Password)</label>
-                <input
-                  type="password"
-                  id="current-password"
-                  className="glass-input"
-                  value={currentPassword}
-                  onChange={(e) => setCurrentPassword(e.target.value)}
-                  disabled={pwSubmitting}
-                  placeholder="กรอกรหัสผ่านปัจจุบัน"
-                  required
-                />
+                <div className="glass-password-wrapper">
+                  <input
+                    type={showCurrentPw ? 'text' : 'password'}
+                    id="current-password"
+                    className="glass-input"
+                    value={currentPassword}
+                    onChange={(e) => setCurrentPassword(e.target.value)}
+                    disabled={pwSubmitting}
+                    placeholder="กรอกรหัสผ่านปัจจุบัน"
+                    required
+                  />
+                  <button
+                    type="button"
+                    className="input-eye-btn"
+                    onClick={() => setShowCurrentPw(!showCurrentPw)}
+                    title={showCurrentPw ? 'ซ่อนรหัสผ่าน' : 'แสดงรหัสผ่าน'}
+                    aria-label={showCurrentPw ? 'ซ่อนรหัสผ่าน' : 'แสดงรหัสผ่าน'}
+                  >
+                    {showCurrentPw ? (
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                        <line x1="1" y1="1" x2="23" y2="23"></line>
+                      </svg>
+                    ) : (
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8z"></path>
+                        <circle cx="12" cy="12" r="3"></circle>
+                      </svg>
+                    )}
+                  </button>
+                </div>
               </div>
 
               <div className="form-group" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                 <div>
                   <label htmlFor="new-password">รหัสผ่านใหม่ (New Password)</label>
-                  <input
-                    type="password"
-                    id="new-password"
-                    className="glass-input"
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    disabled={pwSubmitting}
-                    placeholder="ขั้นต่ำ 6 ตัว"
-                    style={{ margin: 0 }}
-                    required
-                  />
+                  <div className="glass-password-wrapper">
+                    <input
+                      type={showNewPw ? 'text' : 'password'}
+                      id="new-password"
+                      className="glass-input"
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      disabled={pwSubmitting}
+                      placeholder="ขั้นต่ำ 6 ตัว"
+                      style={{ margin: 0 }}
+                      required
+                    />
+                    <button
+                      type="button"
+                      className="input-eye-btn"
+                      onClick={() => setShowNewPw(!showNewPw)}
+                      title={showNewPw ? 'ซ่อนรหัสผ่าน' : 'แสดงรหัสผ่าน'}
+                      aria-label={showNewPw ? 'ซ่อนรหัสผ่าน' : 'แสดงรหัสผ่าน'}
+                    >
+                      {showNewPw ? (
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                          <line x1="1" y1="1" x2="23" y2="23"></line>
+                        </svg>
+                      ) : (
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8z"></path>
+                          <circle cx="12" cy="12" r="3"></circle>
+                        </svg>
+                      )}
+                    </button>
+                  </div>
                 </div>
                 <div>
                   <label htmlFor="confirm-password">ยืนยันรหัสใหม่ (Confirm Password)</label>
-                  <input
-                    type="password"
-                    id="confirm-password"
-                    className="glass-input"
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    disabled={pwSubmitting}
-                    placeholder="ยืนยันรหัสอีกครั้ง"
-                    style={{ margin: 0 }}
-                    required
-                  />
+                  <div className="glass-password-wrapper">
+                    <input
+                      type={showConfirmPw ? 'text' : 'password'}
+                      id="confirm-password"
+                      className="glass-input"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      disabled={pwSubmitting}
+                      placeholder="ยืนยันรหัสอีกครั้ง"
+                      style={{ margin: 0 }}
+                      required
+                    />
+                    <button
+                      type="button"
+                      className="input-eye-btn"
+                      onClick={() => setShowConfirmPw(!showConfirmPw)}
+                      title={showConfirmPw ? 'ซ่อนรหัสผ่าน' : 'แสดงรหัสผ่าน'}
+                      aria-label={showConfirmPw ? 'ซ่อนรหัสผ่าน' : 'แสดงรหัสผ่าน'}
+                    >
+                      {showConfirmPw ? (
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                          <line x1="1" y1="1" x2="23" y2="23"></line>
+                        </svg>
+                      ) : (
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8z"></path>
+                          <circle cx="12" cy="12" r="3"></circle>
+                        </svg>
+                      )}
+                    </button>
+                  </div>
                 </div>
               </div>
 

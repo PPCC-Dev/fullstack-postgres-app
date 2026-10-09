@@ -369,7 +369,9 @@ export const updateTicketStatus = async (req, res) => {
         params = [ticketId];
       } else {
         const newAgentId = ticket.agent_id || userId;
-        const resolvedClause = status === 'C' ? `, resolved_at = CURRENT_TIMESTAMP, resolved_by = $4` : '';
+        const resolvedClause = status === 'C' 
+          ? `, resolved_at = CURRENT_TIMESTAMP, resolved_by = $4` 
+          : `, resolved_at = NULL, resolved_by = NULL`;
         const assignedClause = (!ticket.agent_id && newAgentId) ? `, assigned_at = CURRENT_TIMESTAMP` : '';
         query = `UPDATE tickets SET status = $1, agent_id = $2, updated_at = CURRENT_TIMESTAMP${assignedClause}${resolvedClause} WHERE id = $3 RETURNING *`;
         params = status === 'C' ? [status, newAgentId, ticketId, userId] : [status, newAgentId, ticketId];

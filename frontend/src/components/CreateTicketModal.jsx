@@ -252,14 +252,19 @@ export default function CreateTicketModal({ onClose, onSuccess }) {
             </div>
           )}
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1rem', marginBottom: '1rem' }}>
             <div className="form-group">
-              <label htmlFor="ticket-form-name" style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: '#475569', marginBottom: '0.4rem' }}>FormName</label>
+              <label htmlFor="ticket-form-name" style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: '#475569', marginBottom: '0.4rem' }}>
+                ชื่อหน้าจอ / ฟอร์มที่เกิดปัญหา (Form Name)
+                <span style={{ fontSize: '0.75rem', fontWeight: 'normal', color: '#94a3b8', marginLeft: '0.4rem' }}>
+                  (เช่น Order Entry, GL Entries หรือรหัสที่แสดงบนหัวหน้าจอ SyteLine)
+                </span>
+              </label>
               <input
                 type="text"
                 id="ticket-form-name"
                 className="glass-input"
-                placeholder="เช่น AR-001 หรือ หน้าจอออกใบแจ้งหนี้"
+                placeholder="เช่น Order Entry, Item Master, หรือ AR-001"
                 value={formName}
                 onChange={(e) => setFormName(e.target.value)}
                 disabled={formSubmitting}
@@ -270,7 +275,9 @@ export default function CreateTicketModal({ onClose, onSuccess }) {
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
             <div className="form-group">
-              <label htmlFor="ticket-module" style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: '#475569', marginBottom: '0.4rem' }}>Module</label>
+              <label htmlFor="ticket-module" style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: '#475569', marginBottom: '0.4rem' }}>
+                ระบบงาน / โมดูล (Module)
+              </label>
               <select
                 id="ticket-module"
                 className="glass-input"
@@ -286,7 +293,9 @@ export default function CreateTicketModal({ onClose, onSuccess }) {
             </div>
 
             <div className="form-group">
-              <label htmlFor="ticket-priority" style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: '#475569', marginBottom: '0.4rem' }}>Priority</label>
+              <label htmlFor="ticket-priority" style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: '#475569', marginBottom: '0.4rem' }}>
+                ระดับความเร่งด่วน (Priority)
+              </label>
               <select
                 id="ticket-priority"
                 className="glass-input"
@@ -295,16 +304,21 @@ export default function CreateTicketModal({ onClose, onSuccess }) {
                 disabled={formSubmitting}
                 style={{ background: '#f8fafc', cursor: 'pointer', width: '100%' }}
               >
-                <option value="low">ต่ำ (Low)</option>
-                <option value="medium">ปานกลาง (Medium)</option>
-                <option value="high">สูง (High - เร่งด่วน)</option>
+                <option value="low">ต่ำ (Low - ทั่วไป)</option>
+                <option value="medium">ปานกลาง (Medium - ส่งผลกระทบบางส่วน)</option>
+                <option value="high">สูง (High - เร่งด่วน / งานหยุดชะงัก)</option>
               </select>
             </div>
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
             <div className="form-group">
-              <label htmlFor="ticket-program-type" style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: '#475569', marginBottom: '0.4rem' }}>ProgramType</label>
+              <label htmlFor="ticket-program-type" style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: '#475569', marginBottom: '0.4rem' }}>
+                ประเภทโปรแกรม (Program Type)
+                <span style={{ fontSize: '0.75rem', fontWeight: 'normal', color: '#94a3b8', marginLeft: '0.4rem' }}>
+                  (Standard / Customize / Report)
+                </span>
+              </label>
               <select
                 id="ticket-program-type"
                 className="glass-input"
@@ -321,7 +335,12 @@ export default function CreateTicketModal({ onClose, onSuccess }) {
               </select>
             </div>
             <div className="form-group">
-              <label htmlFor="ticket-issue-type" style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: '#475569', marginBottom: '0.4rem' }}>IssueType</label>
+              <label htmlFor="ticket-issue-type" style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: '#475569', marginBottom: '0.4rem' }}>
+                ประเภทของปัญหา (Issue Type)
+                <span style={{ fontSize: '0.75rem', fontWeight: 'normal', color: '#94a3b8', marginLeft: '0.4rem' }}>
+                  (Bug / คำปรึกษา / Data Issue)
+                </span>
+              </label>
               <select
                 id="ticket-issue-type"
                 className="glass-input"

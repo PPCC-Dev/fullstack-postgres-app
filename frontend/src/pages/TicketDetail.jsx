@@ -178,7 +178,10 @@ export default function TicketDetail({ ticketId, onBack }) {
         body: JSON.stringify({ status: newStatus })
       });
 
-      if (!response.ok) throw new Error('Failed to update status.');
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.error || `Failed to update status (HTTP ${response.status})`);
+      }
       const updatedTicket = await response.json();
       
       // Update local ticket state
@@ -635,35 +638,106 @@ export default function TicketDetail({ ticketId, onBack }) {
             ) : (
               <div className="chat-input-area">
                 {(user.role === 'agent' || user.role === 'admin') && (
-                  <div className="segment-control">
-                    <button
-                      type="button"
-                      className={`segment-btn public ${!isInternal ? 'active' : ''}`}
-                      onClick={() => setIsInternal(false)}
-                    >
-                      💬 ส่งหาลูกค้า (Public)
-                    </button>
-                    <button
-                      type="button"
-                      className={`segment-btn internal ${isInternal ? 'active' : ''}`}
-                      onClick={() => setIsInternal(true)}
-                    >
-                      🔒 โน้ตภายใน (Internal Note)
-                    </button>
-                  </div>
+                  <>
+                    <div className="segment-control">
+                      <button
+                        type="button"
+                        className={`segment-btn public ${!isInternal ? 'active' : ''}`}
+                        onClick={() => setIsInternal(false)}
+                      >
+                        💬 ส่งหาลูกค้า (Public)
+                      </button>
+                      <button
+                        type="button"
+                        className={`segment-btn internal ${isInternal ? 'active' : ''}`}
+                        onClick={() => setIsInternal(true)}
+                      >
+                        🔒 โน้ตภายใน (Internal Note)
+                      </button>
+                    </div>
+
+                    {isInternal ? (
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.5rem',
+                        padding: '0.45rem 0.85rem',
+                        background: 'rgba(254, 243, 199, 0.75)',
+                        border: '1px solid #f59e0b',
+                        borderRadius: '8px',
+                        color: '#92400e',
+                        fontSize: '0.8rem',
+                        fontWeight: 600,
+                        marginBottom: '0.75rem',
+                        boxShadow: '0 2px 6px rgba(245, 158, 11, 0.1)'
+                      }}>
+                        <span>🔒</span>
+                        <span>โหมดบันทึกภายใน (Internal Note): เฉพาะเจ้าหน้าที่และผู้ดูแลระบบเท่านั้นที่เห็นข้อความนี้ (ลูกค้าจะไม่เห็น)</span>
+                      </div>
+                    ) : (
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.5rem',
+                        padding: '0.4rem 0.85rem',
+                        background: 'rgba(239, 246, 255, 0.7)',
+                        border: '1px solid rgba(59, 130, 246, 0.3)',
+                        borderRadius: '8px',
+                        color: '#1d4ed8',
+                        fontSize: '0.8rem',
+                        fontWeight: 500,
+                        marginBottom: '0.75rem'
+                      }}>
+                        <span>💬</span>
+                        <span>โหมดสาธารณะ: ลูกค้าและผู้มีส่วนเกี่ยวข้องทุกคนจะเห็นข้อความนี้</span>
+                      </div>
+                    )}
+                  </>
                 )}
                 <form onSubmit={handleSendMessage} className="chat-form">
                   <input
                     type="text"
                     className="glass-input"
-                    placeholder="พิมพ์ข้อความตอบกลับเพื่อประสานงานช่วยเหลือ..."
+                    placeholder={
+                      isInternal
+                        ? "พิมพ์บันทึกภายในสำหรับทีมงาน (ลูกค้าจะไม่เห็นข้อความนี้)..."
+                        : "พิมพ์ข้อความตอบกลับเพื่อประสานงานช่วยเหลือ..."
+                    }
                     value={newMessageText}
                     onChange={(e) => setNewMessageText(e.target.value)}
                     disabled={sending}
+                    style={
+                      isInternal
+                        ? {
+                            borderColor: '#f59e0b',
+                            background: 'rgba(254, 243, 199, 0.25)',
+                            boxShadow: '0 0 0 2px rgba(245, 158, 11, 0.2)'
+                          }
+                        : {}
+                    }
                     required
                   />
-                  <button type="submit" className="btn btn-primary" style={{ padding: '0 1.5rem' }} disabled={sending}>
-                    {sending ? 'ส่ง...' : 'ส่ง'}
+                  <button 
+                    type="submit" 
+                    className={isInternal ? "btn" : "btn btn-primary"} 
+                    style={{ 
+                      padding: '0 1.5rem',
+                      background: isInternal ? 'linear-gradient(135deg, #f59e0b, #d97706)' : undefined,
+                      color: 'white',
+                      border: 'none',
+                      boxShadow: isInternal ? '0 4px 12px rgba(217, 119, 6, 0.3)' : undefined,
+                      fontWeight: 600,
+                      whiteSpace: 'nowrap'
+                    }} 
+                    disabled={sending}
+                  >
+                    {sending 
+                      ? 'กำลังส่ง...' 
+                      : isInternal 
+                        ? '🔒 บันทึกภายใน' 
+                        : (user.role === 'agent' || user.role === 'admin') 
+                          ? '💬 ส่งหาลูกค้า' 
+                          : 'ส่งข้อความ'}
                   </button>
                 </form>
               </div>
