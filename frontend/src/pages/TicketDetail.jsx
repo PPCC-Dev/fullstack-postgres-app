@@ -167,6 +167,7 @@ export default function TicketDetail({ ticketId, onBack }) {
   };
 
   const handleStatusChange = async (newStatus) => {
+    if (!newStatus) return;
     setUpdatingStatus(true);
     try {
       const response = await fetch(`${API_URL}/tickets/${ticketId}/status`, {
@@ -194,8 +195,8 @@ export default function TicketDetail({ ticketId, onBack }) {
       // Reload all to sync assigned names
       await fetchTicketDetails();
     } catch (err) {
-      console.error(err);
-      alert(err.message);
+      console.error('Status update error:', err);
+      alert(`ไม่สามารถเปลี่ยนสถานะได้: ${err.message}`);
     } finally {
       setUpdatingStatus(false);
     }
@@ -766,7 +767,7 @@ export default function TicketDetail({ ticketId, onBack }) {
                       <label>เปลี่ยนสถานะการทำงาน</label>
                       <select
                         className="glass-input"
-                        value={ticket.status}
+                        value={ticket.status || ''}
                         onChange={(e) => handleStatusChange(e.target.value)}
                         disabled={updatingStatus || ['C', 'resolved'].includes(ticket.status)}
                         style={{ 
@@ -775,6 +776,7 @@ export default function TicketDetail({ ticketId, onBack }) {
                           opacity: ['C', 'resolved'].includes(ticket.status) ? 0.7 : 1
                         }}
                       >
+                        {!ticket.status && <option value="" disabled>-- เลือกสถานะ --</option>}
                         {supportStats.length > 0 ? supportStats.map(s => (
                           <option key={s.stat} value={s.stat}>{s.description}</option>
                         )) : (

@@ -24,7 +24,8 @@ export const createTicket = async (req, res) => {
   let cust_num = req.body.cust_num;
   const customerId = req.user.id;
 
-  if (req.user.role === 'customer') {
+  const userRole = (req.user?.role || req.user?.user_role || '').toLowerCase();
+  if (userRole === 'customer') {
     cust_num = req.user.cust_num;
   }
 
@@ -159,7 +160,8 @@ export const createTicket = async (req, res) => {
 
 // 2. Get All Tickets (Customer gets their own, Agent gets all)
 export const getTickets = async (req, res) => {
-  const { id, role } = req.user;
+  const id = req.user.id;
+  const role = (req.user.role || req.user.user_role || '').toLowerCase();
   const page = parseInt(req.query.page, 10) || 1;
   const limit = parseInt(req.query.limit, 10) || 0; // 0 means unpaginated by default
   const isPaginated = req.query.paginate === 'true' || limit > 0;
@@ -223,7 +225,8 @@ export const getTickets = async (req, res) => {
 
 // 3. Get Ticket Details by ID
 export const getTicketById = async (req, res) => {
-  const { id: userId, role } = req.user;
+  const userId = req.user?.id;
+  const role = (req.user?.role || req.user?.user_role || '').toLowerCase();
   const ticketId = req.params.id;
 
   try {
@@ -334,13 +337,20 @@ export const claimTicket = async (req, res) => {
 
 // 5. Update Ticket Status (Agent can change any, Customer can only close/resolve own)
 export const updateTicketStatus = async (req, res) => {
-  const { id: userId, role } = req.user;
+  const userId = req.user?.id;
+  const userRole = (req.user?.role || req.user?.user_role || '').toLowerCase();
   const ticketId = req.params.id;
   let { status } = req.body;
 
-  // Normalize client aliases ('resolved' -> 'C', 'open' -> 'O')
-  if (status === 'resolved') status = 'C';
-  if (status === 'open') status = 'O';
+  // Normalize status if string
+  if (typeof status === 'string') {
+    status = status.trim();
+    const sLower = status.toLowerCase();
+    if (sLower === 'resolved' || sLower === 'closed') status = 'C';
+    else if (sLower === 'open') status = 'O';
+    else if (sLower === 'assigned' || sLower === 'in-process' || sLower === 'in_process') status = 'I';
+    else status = status.toUpperCase();
+  }
 
   try {
     const checkTicket = await pool.query('SELECT * FROM tickets WHERE id = $1', [ticketId]);
@@ -351,12 +361,17 @@ export const updateTicketStatus = async (req, res) => {
     const ticket = checkTicket.rows[0];
 
     // Authorization & Status validation
-    if (role === 'agent' || role === 'admin') {
-      // Validate status against support_stats or null/empty
-      if (status !== null && status !== '') {
-        const statCheck = await pool.query('SELECT stat FROM support_stats WHERE stat = $1', [status]);
-        if (statCheck.rows.length === 0 && !['O', 'C'].includes(status)) {
-          return res.status(400).json({ error: 'Invalid status value.' });
+    const isStaff = userRole === 'agent' || userRole === 'admin';
+    if (isStaff) {
+      // Validate status against support_stats or standard codes or null/empty
+      if (status !== null && status !== undefined && status !== '') {
+        const standardStats = ['O', 'C', 'I', 'D', 'F', 'M', 'N', 'Q', 'S', 'T', 'V', 'W'];
+        const statCheck = await pool.query('SELECT stat FROM support_stats WHERE UPPER(stat) = UPPER($1)', [status]);
+        if (statCheck.rows.length === 0 && !standardStats.includes(status)) {
+          return res.status(400).json({ error: `Invalid status value: ${status}` });
+        }
+        if (statCheck.rows.length > 0) {
+          status = statCheck.rows[0].stat;
         }
       }
 
@@ -474,7 +489,8 @@ export const updateTicketStatus = async (req, res) => {
 };
 
 export const updateTicketDetails = async (req, res) => {
-  const { id: userId, role } = req.user;
+  const userId = req.user?.id;
+  const role = (req.user?.role || req.user?.user_role || '').toLowerCase();
   const ticketId = req.params.id;
 
   if (role !== 'agent' && role !== 'admin') {
@@ -517,7 +533,8 @@ export const updateTicketDetails = async (req, res) => {
 };
 
 export const addMessage = async (req, res) => {
-  const { id: userId, role } = req.user;
+  const userId = req.user?.id;
+  const role = (req.user?.role || req.user?.user_role || '').toLowerCase();
   const ticketId = req.params.id;
   const { message_text } = req.body;
   let is_internal = req.body.is_internal === true || req.body.is_internal === 'true';
@@ -648,7 +665,8 @@ export const addMessage = async (req, res) => {
 
 // 7. Get All Messages of a Ticket
 export const getTicketMessages = async (req, res) => {
-  const { id: userId, role } = req.user;
+  const userId = req.user?.id;
+  const role = (req.user?.role || req.user?.user_role || '').toLowerCase();
   const ticketId = req.params.id;
 
   try {
@@ -1130,7 +1148,8 @@ export const deleteRole = async (req, res) => {
 
 // 14. Update Ticket Solution and Workaround (Agent/Admin Only)
 export const updateTicketSolutionWorkaround = async (req, res) => {
-  const { id: userId, role } = req.user;
+  const userId = req.user?.id;
+  const role = (req.user?.role || req.user?.user_role || '').toLowerCase();
   const ticketId = req.params.id;
   const { solution, workaround } = req.body;
 
@@ -1195,7 +1214,8 @@ export const updateTicketSolutionWorkaround = async (req, res) => {
 
 // 15. Add Ticket Attachments (Customer who owns the ticket OR Agent/Admin Only)
 export const addTicketAttachments = async (req, res) => {
-  const { id: userId, role } = req.user;
+  const userId = req.user?.id;
+  const role = (req.user?.role || req.user?.user_role || '').toLowerCase();
   const ticketId = req.params.id;
 
   if (!req.files || req.files.length === 0) {
@@ -1262,7 +1282,8 @@ export const addTicketAttachments = async (req, res) => {
 
 // 16. Delete Ticket Attachment (Customer who owns the ticket OR Agent/Admin Only)
 export const deleteTicketAttachment = async (req, res) => {
-  const { id: userId, role } = req.user;
+  const userId = req.user?.id;
+  const role = (req.user?.role || req.user?.user_role || '').toLowerCase();
   const { id: ticketId, attachmentId } = req.params;
 
   try {

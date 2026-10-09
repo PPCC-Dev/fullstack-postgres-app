@@ -38,8 +38,8 @@ export const authenticateToken = async (req, res, next) => {
     
     req.user = verified; // Contains id, email, name from token
     req.user.user_role = result.rows[0].user_role; // The actual role name (e.g., 'Senior Support')
-    // Fallback to user_role if base_role is not found (for backwards compatibility)
-    req.user.role = (result.rows[0].base_role || result.rows[0].user_role || '').toLowerCase(); 
+    // Fallback to user_role or verified.role if base_role is not found (for backwards compatibility)
+    req.user.role = (result.rows[0].base_role || result.rows[0].user_role || verified.role || '').toLowerCase(); 
     req.user.cust_num = result.rows[0].cust_num;
     
     next();
@@ -54,7 +54,8 @@ export const requireAgent = (req, res, next) => {
     return res.status(401).json({ error: 'Access denied. User not authenticated.' });
   }
 
-  if (req.user.role !== 'agent' && req.user.role !== 'admin') {
+  const role = (req.user.role || req.user.user_role || '').toLowerCase();
+  if (role !== 'agent' && role !== 'admin') {
     return res.status(403).json({ error: 'Access denied. Agent or Admin role required.' });
   }
 
@@ -67,7 +68,8 @@ export const requireAdmin = (req, res, next) => {
     return res.status(401).json({ error: 'Access denied. User not authenticated.' });
   }
 
-  if (req.user.role !== 'admin') {
+  const role = (req.user.role || req.user.user_role || '').toLowerCase();
+  if (role !== 'admin') {
     return res.status(403).json({ error: 'Access denied. Admin role required.' });
   }
 
